@@ -46,7 +46,7 @@ export function PublicGallery() {
             <button className={lang === "zh" ? "active" : ""} onClick={() => setLang("zh")}>中</button>
             <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
           </div>
-          <a href="/admin" className="text-link">{t.admin}</a>
+          {/* admin 入口已隐藏；通过 URL /admin 直接访问 */}
         </div>
       </header>
 

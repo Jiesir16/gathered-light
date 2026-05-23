@@ -1,11 +1,12 @@
 :root {
-  --bg: #faf8f4;
-  --panel: #f4f1ea;
+  /* 配色：pure（纯白底），对齐原型 design/app.jsx 的 toneVars.pure */
+  --bg: #ffffff;
+  --panel: #fafafa;
   --panel-2: #ffffff;
-  --fg: #1a1814;
-  --muted: #948d80;
-  --muted-2: #5d574d;
-  --rule: #e8e3d8;
+  --fg: #0e0e10;
+  --muted: #9a9a9f;
+  --muted-2: #5b5b60;
+  --rule: #ececec;
   --accent: #5e7a64;
   color: var(--fg);
   background: var(--bg);
