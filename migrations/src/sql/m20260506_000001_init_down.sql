@@ -1,0 +1,10 @@
+-- 回滚（仅 dev 环境用；生产严禁直接 down）
+DROP TABLE IF EXISTS photo_tags;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS photo_translations;
+DROP TABLE IF EXISTS photos;
+DROP TABLE IF EXISTS media_variants;
+DROP TABLE IF EXISTS media_assets;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+DROP EXTENSION IF EXISTS citext;

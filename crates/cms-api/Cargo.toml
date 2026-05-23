@@ -1,0 +1,74 @@
+[package]
+name         = "cms-api"
+default-run  = "cms-api"
+version.workspace      = true
+edition.workspace      = true
+authors.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+
+[[bin]]
+name = "cms-api"
+path = "src/main.rs"
+
+[[bin]]
+name = "seed_demo"
+path = "src/bin/seed_demo.rs"
+
+[[bin]]
+name = "seed_admin"
+path = "src/bin/seed_admin.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+# ── 内部 ─────────────────────────────────────────────────────
+cms-domain.workspace = true
+cms-entity.workspace = true
+
+# ── runtime / web ───────────────────────────────────────────
+tokio.workspace      = true
+axum.workspace       = true
+tower.workspace      = true
+tower-http.workspace = true
+hyper.workspace      = true
+http.workspace       = true
+futures.workspace    = true
+
+# ── observability ───────────────────────────────────────────
+tracing.workspace            = true
+tracing-subscriber.workspace = true
+
+# ── serde / config / error ──────────────────────────────────
+serde.workspace      = true
+serde_json.workspace = true
+anyhow.workspace     = true
+thiserror.workspace  = true
+figment.workspace    = true
+dotenvy.workspace    = true
+
+# ── auth / validation / cache / persistence ─────────────────
+fred.workspace         = true
+jsonwebtoken.workspace = true
+argon2.workspace       = true
+rand.workspace         = true
+validator.workspace    = true
+sea-orm.workspace      = true
+
+# ── object storage ───────────────────────────────────────────
+aws-config.workspace           = true
+aws-credential-types.workspace = true
+aws-sdk-s3.workspace           = true
+
+# ── image processing ─────────────────────────────────────────
+image.workspace = true
+
+# ── misc ────────────────────────────────────────────────────
+chrono.workspace = true
+uuid.workspace   = true
+
+[dev-dependencies]
+migrations.workspace = true
+tower.workspace      = true
+# 测试复用 dev compose 的 PG/Redis（不启 testcontainers）。详见 §14.5。

@@ -1,0 +1,23 @@
+# 默认配置（≈ application.yml）。env 变量 APP_*__* 会覆盖此处。
+
+bind_addr = "0.0.0.0:8080"
+
+[database]
+url      = "postgres://postgres:postgres@localhost:5432/gathered_light"
+pool_min = 2
+pool_max = 16
+
+[redis]
+url       = "redis://localhost:6379/0"
+pool_size = 8
+
+[s3]
+endpoint         = "http://localhost:9000"
+region           = "us-east-1"
+bucket           = "gathered-light"
+upload_max_bytes = 26214400      # 25 MiB
+
+[jwt]
+access_ttl_secs  = 900           # 15 min
+refresh_ttl_secs = 604800        # 7 days
+secret           = "dev-secret-change-me"

@@ -1,0 +1,219 @@
+export type Lang = "zh" | "en";
+export type Privacy = "public" | "locked" | "private";
+
+export interface I18nText {
+  zh: string;
+  en: string;
+}
+
+export interface Category {
+  key: string;
+  zh: string;
+  en: string;
+}
+
+export interface CategoryAdminDto {
+  id: number;
+  slug: string;
+  name: I18nText;
+  sort_order: number;
+  photo_count: number;
+}
+
+export interface NewCategoryReq {
+  slug: string;
+  name: I18nText;
+  sort_order?: number;
+}
+
+export interface UpdateCategoryReq {
+  slug?: string;
+  name?: I18nText;
+  sort_order?: number;
+}
+
+export interface Photo {
+  id: number;
+  slug: string;
+  src: string;
+  cat: string;
+  title: I18nText;
+  loc: I18nText;
+  caption?: I18nText;
+  alt_text?: I18nText;
+  date: string;
+  privacy: Privacy;
+  tags: TagSummary[];
+}
+
+export interface TagSummary {
+  id: number;
+  slug: string;
+  name: I18nText;
+}
+
+export type Tag = TagSummary;
+
+export interface TagListResponse {
+  items: Tag[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface NewTagReq {
+  slug: string;
+  name: I18nText;
+}
+
+export interface UpdateTagReq {
+  slug?: string;
+  name?: I18nText;
+}
+
+export type PhotoPayload = Omit<Photo, "id" | "tags" | "slug" | "caption" | "alt_text"> & {
+  slug?: string;
+  caption?: I18nText;
+  alt_text?: I18nText;
+  tag_ids: number[];
+};
+
+export interface PhotoListResp {
+  items: Photo[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface DashboardResp {
+  photos: DashboardPhotoStats;
+  media: DashboardMediaStats;
+  users_total: number;
+  tags_total: number;
+  categories_total: number;
+}
+
+export interface DashboardPhotoStats {
+  total: number;
+  by_privacy: DashboardPrivacyCount;
+  by_category: DashboardCategoryCount[];
+  recent: DashboardPhotoSummary[];
+}
+
+export interface DashboardPrivacyCount {
+  public: number;
+  locked: number;
+  private: number;
+}
+
+export interface DashboardCategoryCount {
+  slug: string;
+  name: I18nText;
+  count: number;
+}
+
+export interface DashboardPhotoSummary {
+  id: number;
+  slug: string;
+  title: I18nText;
+  src: string;
+  created_at: string;
+}
+
+export interface DashboardMediaStats {
+  total: number;
+  pending: number;
+  processing: number;
+  ready: number;
+  failed: number;
+}
+
+export interface BulkDeleteReq {
+  ids: number[];
+}
+
+export interface BulkPrivacyReq {
+  ids: number[];
+  privacy: Privacy;
+}
+
+export type BulkTagMode = "replace" | "append";
+
+export interface BulkTagsReq {
+  ids: number[];
+  tag_ids: number[];
+  mode: BulkTagMode;
+}
+
+export interface BulkResp {
+  affected: number;
+  skipped: number[];
+}
+
+export interface User {
+  id: number;
+  email: string;
+  display_name: string;
+  role: string;
+}
+
+export type UserRole = "owner" | "editor" | "viewer";
+
+export interface UserListItem {
+  id: number;
+  email: string;
+  display_name: string | null;
+  role: UserRole;
+  created_at: string;
+}
+
+export interface UserListResponse {
+  items: UserListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface NewUserReq {
+  email: string;
+  password: string;
+  display_name?: string | null;
+  role: UserRole;
+}
+
+export interface UpdateUserReq {
+  display_name?: string;
+  role?: UserRole;
+}
+
+export interface TokenPair {
+  access_token: string;
+  refresh_token: string;
+  token_type: "Bearer";
+  expires_in: number;
+  user: User;
+}
+
+export interface PresignPayload {
+  file_name: string;
+  mime_type: string;
+  byte_size: number;
+}
+
+export interface PresignResponse {
+  method: "PUT";
+  upload_url: string;
+  public_url: string;
+  storage_key: string;
+  headers: Record<string, string>;
+  max_bytes: number;
+  expires_in: number;
+}
+
+export type CompleteRequest = { storage_key: string };
+
+export interface CompleteResponse {
+  asset_id: number;
+  storage_key: string;
+  public_url: string;
+}

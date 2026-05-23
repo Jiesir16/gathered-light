@@ -1,0 +1,91 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/cms-api",
+    "crates/cms-domain",
+    "crates/cms-entity",
+    "migrations",
+]
+
+[workspace.package]
+version    = "0.1.0"
+edition    = "2024"
+authors    = ["jiesir <jiesir16@gmail.com>"]
+license    = "MIT"
+rust-version = "1.85"
+
+[workspace.dependencies]
+# ── runtime ─────────────────────────────────────────────────────────────
+tokio        = { version = "1", features = ["full"] }
+async-trait  = "0.1"
+futures      = "0.3"
+
+# ── web ─────────────────────────────────────────────────────────────────
+axum         = { version = "0.7", features = ["macros"] }
+tower        = { version = "0.5", features = ["util"] }
+tower-http   = { version = "0.5", features = ["trace", "cors", "request-id", "util", "fs"] }
+hyper        = "1"
+http         = "1"
+
+# ── observability ───────────────────────────────────────────────────────
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "chrono"] }
+
+# ── serde / json ────────────────────────────────────────────────────────
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── auth / validation / cache ──────────────────────────────────────────
+fred         = { version = "9", features = ["enable-rustls", "metrics"] }
+jsonwebtoken = "9"
+argon2       = "0.5"
+rand         = "0.8"
+validator    = { version = "0.18", features = ["derive"] }
+
+# ── error / config ──────────────────────────────────────────────────────
+anyhow    = "1"
+thiserror = "1"
+figment   = { version = "0.10", features = ["toml", "env"] }
+dotenvy   = "0.15"
+
+# ── time / id ───────────────────────────────────────────────────────────
+chrono = { version = "0.4", features = ["serde"] }
+uuid   = { version = "1", features = ["v4", "serde"] }
+
+# ── persistence (会被 cms-entity / migrations 使用，cms-api 在 M1 接入) ──
+sea-orm = { version = "1", features = [
+    "runtime-tokio-rustls",
+    "sqlx-postgres",
+    "macros",
+    "with-chrono",
+    "with-uuid",
+    "with-json",
+] }
+sea-orm-migration = { version = "1", features = [
+    "runtime-tokio-rustls",
+    "sqlx-postgres",
+] }
+
+# ── object storage ─────────────────────────────────────────────────────
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-credential-types = "1"
+aws-sdk-s3 = "1"
+
+# ── image processing ───────────────────────────────────────────────────
+image = { version = "0.25", features = ["jpeg", "png", "webp"] }
+
+# ── integration tests ──────────────────────────────────────────────────
+# 不再使用 testcontainers——它会启独立 PG/Redis 容器，进程异常退出留孤儿。
+# 测试改为复用 dev compose 已起的 gathered-pg/gathered-redis：
+# 测试 DB = `gathered_light_test`（每次 DROP+CREATE）；测试 Redis = DB 15（与 dev DB 0 隔离）。
+# 详见 docs/ARCHITECTURE.md §14.5。
+
+# ── 内部 crate 引用 ─────────────────────────────────────────────────────
+cms-domain = { path = "crates/cms-domain" }
+cms-entity = { path = "crates/cms-entity" }
+migrations = { path = "migrations" }
+
+[profile.release]
+codegen-units = 1
+lto           = "thin"
+strip         = "symbols"

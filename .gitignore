@@ -1,0 +1,17 @@
+target/
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+.DS_Store
+.env*
+keys/*
+*.pem
+*.key
+*.log
+.idea/
+.vscode/
+# docker-compose bind mount 的本地数据（PG/Redis/MinIO）
+data/
+# 临时 / 部署中间产物
+deploy/env.prod
+*.bak
