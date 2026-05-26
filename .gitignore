@@ -10,6 +10,7 @@ keys/*
 *.log
 .idea/
 .vscode/
+.claude/
 # docker-compose bind mount 的本地数据（PG/Redis/MinIO）
 data/
 # 临时 / 部署中间产物

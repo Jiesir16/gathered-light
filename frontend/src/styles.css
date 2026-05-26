@@ -68,6 +68,16 @@ a {
   backdrop-filter: blur(16px);
 }
 
+/* 公开顶栏改 3 列 grid：左 brand / 中 nav / 右 lang —— nav 视觉真正居中，
+   不受左右子区域宽度影响 */
+.topbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+.topbar > .brand { justify-self: start; }
+.topbar > .category-nav { justify-self: center; }
+.topbar > .top-actions { justify-self: end; }
+
 .brand {
   display: flex;
   align-items: baseline;
@@ -861,12 +871,768 @@ a {
   gap: 10px;
 }
 
+/* ================================================================
+   Admin · sidebar + workspace 布局（Ghost / Strapi 风格）
+   仅在 .admin-shell.sidebar 作用域下覆盖；前台 site 样式不受影响
+   ================================================================ */
+
+.admin-shell.sidebar {
+  --admin-bg: #ffffff;
+  --admin-sidebar-bg: #fafafa;
+  --admin-sidebar-border: #edeef0;
+  --admin-text: #1b1c1f;
+  --admin-text-muted: #5c6168;
+  --admin-text-soft: #9098a1;
+  --admin-rule: #edeef0;
+  --admin-card-bg: #ffffff;
+  --admin-hover: rgba(15, 17, 21, 0.045);
+  --admin-active-bg: rgba(94, 122, 100, 0.1);
+  --admin-active-text: #2a3a30;
+  --admin-accent: #5e7a64;
+  --admin-accent-strong: #46604c;
+  --admin-shadow-sm: 0 1px 2px rgba(15, 17, 21, 0.04);
+
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--admin-bg);
+  color: var(--admin-text);
+  font-family: Inter, "Noto Sans SC", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* —— 侧栏 —— */
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+  padding: 24px 18px 18px;
+  background: var(--admin-sidebar-bg);
+  border-right: 1px solid var(--admin-sidebar-border);
+  z-index: 40;
+}
+
+.sidebar-brand {
+  padding: 4px 8px 12px;
+}
+
+.sidebar-brand .brand.stacked {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.sidebar-brand .brand span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.sidebar-brand .brand small {
+  font-size: 9px;
+  letter-spacing: 0.32em;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-group-label {
+  padding: 0 10px 6px;
+  color: var(--admin-text-soft);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sidebar-item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 13.5px;
+  text-align: left;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.sidebar-item:hover {
+  background: var(--admin-hover);
+  color: var(--admin-text);
+}
+
+.sidebar-item.active {
+  background: var(--admin-active-bg);
+  color: var(--admin-active-text);
+  font-weight: 500;
+}
+
+.sidebar-item-icon {
+  display: grid;
+  place-items: center;
+  color: currentColor;
+  opacity: 0.85;
+}
+
+.sidebar-item.active .sidebar-item-icon {
+  opacity: 1;
+  color: var(--admin-accent-strong);
+}
+
+/* —— 侧栏底部 —— */
+.sidebar-footer {
+  display: grid;
+  gap: 12px;
+  padding: 12px 8px 6px;
+  border-top: 1px solid var(--admin-sidebar-border);
+}
+
+.sidebar-user {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 2px;
+}
+
+.sidebar-user .avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--admin-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.sidebar-user-text {
+  display: grid;
+  min-width: 0;
+}
+
+.sidebar-user-text strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--admin-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user-text span {
+  font-size: 11px;
+  color: var(--admin-text-soft);
+  text-transform: capitalize;
+}
+
+.sidebar-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-tools .lang-switch {
+  border-color: var(--admin-rule);
+}
+
+.sidebar-tools .lang-switch button {
+  color: var(--admin-text-muted);
+  font-size: 10px;
+}
+
+.sidebar-tools .lang-switch button.active {
+  background: var(--admin-text);
+  color: #fff;
+}
+
+.sidebar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.sidebar-link:hover {
+  background: var(--admin-hover);
+  color: var(--admin-text);
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* —— 工作区 —— */
+.admin-workspace {
+  min-width: 0;
+  background: var(--admin-bg);
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workspace-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 56px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--admin-rule);
+  background: color-mix(in srgb, var(--admin-bg) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.workspace-topbar .mobile-only {
+  display: none;
+}
+
+.workspace-topbar .crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--admin-text-soft);
+  letter-spacing: 0.04em;
+}
+
+.workspace-topbar .crumbs-current {
+  color: var(--admin-text);
+  font-weight: 500;
+}
+
+.workspace-topbar .crumbs-sep {
+  opacity: 0.6;
+}
+
+.workspace-topbar .hello {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+
+/* —— 页头 —— */
+.admin-shell.sidebar .page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 36px 40px 24px;
+  border-bottom: 0;
+  background: transparent;
+  position: static;
+  height: auto;
+}
+
+.page-header-text h1 {
+  margin: 0 0 6px;
+  font-family: Inter, "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--admin-text);
+}
+
+.page-header-text p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--admin-text-muted);
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* —— 主体 —— */
+.admin-shell.sidebar .workspace-body {
+  padding: 8px 40px 56px;
+  max-width: none;
+  margin: 0;
+}
+
+/* —— 统计卡 —— */
+.admin-shell.sidebar .stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+  border: 0;
+  background: transparent;
+}
+
+.admin-shell.sidebar .stat-card {
+  padding: 18px 20px;
+  background: var(--admin-card-bg);
+  border: 1px solid var(--admin-rule);
+  border-radius: 10px;
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-shell.sidebar .stat-card span {
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-shell.sidebar .stat-card strong {
+  margin-top: 8px;
+  font-family: Inter, "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--admin-text);
+}
+
+/* —— Dashboard 面板 —— */
+.admin-shell.sidebar .dashboard-grid {
+  gap: 16px;
+}
+
+.admin-shell.sidebar .dashboard-panel {
+  border: 1px solid var(--admin-rule);
+  border-radius: 10px;
+  padding: 20px 22px;
+  background: var(--admin-card-bg);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-shell.sidebar .dashboard-panel h2 {
+  margin: 0 0 14px;
+  font-family: Inter, "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--admin-text);
+}
+
+.admin-shell.sidebar .dashboard-bar-track {
+  background: #f1f2f4;
+  border-radius: 999px;
+  height: 8px;
+}
+
+.admin-shell.sidebar .dashboard-bar-fill {
+  background: var(--admin-accent);
+  border-radius: 999px;
+}
+
+.admin-shell.sidebar .dashboard-bar-label,
+.admin-shell.sidebar .dashboard-bar-value,
+.admin-shell.sidebar .dashboard-recent span,
+.admin-shell.sidebar .dashboard-media-line {
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+}
+
+.admin-shell.sidebar .dashboard-recent img {
+  border-radius: 8px;
+}
+
+/* —— 工具栏 / 过滤芯片 —— */
+.admin-shell.sidebar .toolbar {
+  margin-bottom: 16px;
+}
+
+.admin-shell.sidebar .toolbar.card {
+  padding: 12px 14px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 10px;
+  background: var(--admin-card-bg);
+  box-shadow: var(--admin-shadow-sm);
+  flex-wrap: wrap;
+}
+
+.admin-shell.sidebar .toolbar.pagination {
+  margin-top: 18px;
+  padding: 6px 0;
+}
+
+.admin-shell.sidebar .page-info {
+  font-size: 12px;
+  color: var(--admin-text-muted);
+}
+
+.admin-shell.sidebar .chips {
+  flex-wrap: wrap;
+}
+
+.admin-shell.sidebar .chips button,
+.admin-shell.sidebar .filters button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+}
+
+.admin-shell.sidebar .chips button:hover,
+.admin-shell.sidebar .filters button:hover {
+  border-color: #d6d9dd;
+  color: var(--admin-text);
+}
+
+.admin-shell.sidebar .chips button.active,
+.admin-shell.sidebar .filters button.active {
+  background: var(--admin-text);
+  border-color: var(--admin-text);
+  color: #fff;
+}
+
+.admin-shell.sidebar .chips button span,
+.admin-shell.sidebar .filters button span {
+  margin-left: 6px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
+/* —— 搜索输入 —— */
+.search-input {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.search-input svg {
+  position: absolute;
+  left: 10px;
+  color: var(--admin-text-soft);
+  pointer-events: none;
+}
+
+.search-input input {
+  min-width: 260px;
+  height: 34px;
+  padding: 0 12px 0 32px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.search-input input:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(94, 122, 100, 0.14);
+}
+
+/* —— 按钮（admin 作用域内）—— */
+.admin-shell.sidebar .primary,
+.admin-shell.sidebar .secondary {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.admin-shell.sidebar .primary {
+  background: var(--admin-accent);
+  border: 1px solid var(--admin-accent);
+  color: #fff;
+}
+
+.admin-shell.sidebar .primary:hover {
+  background: var(--admin-accent-strong);
+  border-color: var(--admin-accent-strong);
+}
+
+.admin-shell.sidebar .secondary {
+  background: #fff;
+  border: 1px solid var(--admin-rule);
+  color: var(--admin-text);
+}
+
+.admin-shell.sidebar .secondary:hover {
+  border-color: #d6d9dd;
+  background: #fafafa;
+}
+
+.admin-shell.sidebar .secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* —— 表格 —— */
+.admin-shell.sidebar .admin-table {
+  border: 1px solid var(--admin-rule);
+  border-radius: 10px;
+  background: var(--admin-card-bg);
+  box-shadow: var(--admin-shadow-sm);
+  overflow: hidden;
+}
+
+.admin-shell.sidebar .table-head {
+  padding: 12px 18px;
+  background: #fafbfc;
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-shell.sidebar .table-row {
+  padding: 12px 18px;
+  border-top: 1px solid var(--admin-rule);
+  transition: background 120ms ease;
+}
+
+.admin-shell.sidebar .table-row:hover {
+  background: #fbfbfc;
+}
+
+.admin-shell.sidebar .table-row img {
+  border-radius: 6px;
+}
+
+.admin-shell.sidebar .row-title strong {
+  font-family: Inter, "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--admin-text);
+}
+
+.admin-shell.sidebar .row-title span,
+.admin-shell.sidebar .table-row > span {
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+}
+
+.admin-shell.sidebar .privacy-pill {
+  justify-self: start;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.admin-shell.sidebar .privacy-pill.public {
+  background: rgba(94, 122, 100, 0.1);
+  border-color: rgba(94, 122, 100, 0.28);
+  color: #3f5945;
+}
+
+.admin-shell.sidebar .privacy-pill.locked {
+  background: rgba(186, 121, 60, 0.1);
+  border-color: rgba(186, 121, 60, 0.28);
+  color: #8a5224;
+}
+
+.admin-shell.sidebar .privacy-pill.private {
+  background: rgba(112, 116, 122, 0.1);
+  border-color: rgba(112, 116, 122, 0.28);
+  color: #54585f;
+}
+
+.admin-shell.sidebar .row-actions button {
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.admin-shell.sidebar .row-actions button:hover {
+  background: var(--admin-hover);
+  color: var(--admin-text);
+}
+
+/* —— 批量操作条 —— */
+.admin-shell.sidebar .bulk-toolbar {
+  padding: 10px 14px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 10px;
+  background: rgba(94, 122, 100, 0.05);
+}
+
+.admin-shell.sidebar .bulk-toolbar button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12.5px;
+}
+
+.admin-shell.sidebar .bulk-toolbar button:hover {
+  border-color: #d6d9dd;
+}
+
+.admin-shell.sidebar .bulk-toolbar .danger {
+  border-color: rgba(186, 74, 74, 0.4);
+  color: #ad3a3a;
+}
+
+.admin-shell.sidebar .bulk-toolbar .danger:hover {
+  background: rgba(186, 74, 74, 0.06);
+}
+
+.admin-shell.sidebar .bulk-sep {
+  background: var(--admin-rule);
+}
+
+/* —— 状态行 / 空状态 / 脚注 —— */
+.admin-shell.sidebar .state-line {
+  max-width: none;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fafafa;
+  color: var(--admin-text-muted);
+  font-size: 13px;
+}
+
+.admin-shell.sidebar .state-line.error {
+  background: rgba(186, 74, 74, 0.07);
+  color: #ad3a3a;
+}
+
+.admin-shell.sidebar .state-line.success {
+  background: rgba(94, 122, 100, 0.08);
+  color: var(--admin-accent-strong);
+}
+
+.admin-shell.sidebar .empty-state {
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--admin-text-soft);
+  font-size: 13px;
+}
+
+.admin-shell.sidebar .admin-footnote {
+  margin-top: 24px;
+  color: var(--admin-text-soft);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+}
+
+/* —— icon-only 按钮 —— */
+.admin-shell.sidebar .icon-only {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text-muted);
+}
+
+.admin-shell.sidebar .icon-only:hover {
+  background: #fafafa;
+  color: var(--admin-text);
+}
+
+/* —— Modal / Dialog —— */
+.admin-shell.sidebar ~ .modal-backdrop,
+.admin-shell.sidebar .modal-backdrop,
+.modal-backdrop {
+  background: rgba(15, 17, 21, 0.42);
+}
+
+.admin-shell.sidebar .photo-dialog,
+body:has(.admin-shell.sidebar) .photo-dialog {
+  border-radius: 12px;
+  border: 1px solid var(--admin-rule, #edeef0);
+  box-shadow: 0 24px 64px rgba(15, 17, 21, 0.18);
+}
+
+.admin-shell.sidebar .photo-dialog h2 {
+  font-family: Inter, "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--admin-text);
+}
+
+.admin-shell.sidebar .photo-dialog label span {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--admin-text-muted);
+}
+
+.admin-shell.sidebar .photo-dialog input,
+.admin-shell.sidebar .photo-dialog select {
+  border-radius: 8px;
+  border-color: var(--admin-rule);
+}
+
+.admin-shell.sidebar .photo-dialog input:focus,
+.admin-shell.sidebar .photo-dialog select:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(94, 122, 100, 0.14);
+}
+
+/* —— Login 页（用 Ghost 风的卡片）—— */
+.login-screen {
+  background: #fafafa;
+}
+
+.login-card {
+  padding: 36px;
+  border: 1px solid #edeef0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 36px rgba(15, 17, 21, 0.06);
+}
+
+/* ================================================================
+   响应式：保留原有 + 新增 admin sidebar 适配
+   ================================================================ */
 @media (max-width: 900px) {
   .topbar,
   .admin-topbar {
     height: auto;
     padding: 16px 20px;
     flex-wrap: wrap;
+  }
+  /* 窄屏退回 flex（让 flex-wrap: wrap 真正生效），否则 grid 不能换行 */
+  .topbar {
+    display: flex;
   }
 
   .intro {
@@ -914,5 +1680,203 @@ a {
 
   .photo-dialog {
     grid-template-columns: 1fr;
+  }
+
+  /* admin sidebar 折叠 */
+  .admin-shell.sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    box-shadow: 0 12px 40px rgba(15, 17, 21, 0.12);
+  }
+
+  .admin-shell.sidebar.open .admin-sidebar {
+    transform: translateX(0);
+  }
+
+  .admin-shell.sidebar.open .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 17, 21, 0.32);
+    z-index: 35;
+  }
+
+  .workspace-topbar {
+    padding: 0 16px;
+  }
+
+  .workspace-topbar .mobile-only {
+    display: grid;
+  }
+
+  .admin-shell.sidebar .page-header {
+    padding: 24px 20px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .admin-shell.sidebar .workspace-body {
+    padding: 4px 20px 40px;
+  }
+
+  .admin-shell.sidebar .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-input input {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* ================================================================
+   移动端 lightbox 适配（≤640px）
+   - 图片满宽、上下贴边
+   - close 缩到右上、prev/next 改为底部居中工具条
+   - caption 改竖排，分类标签换行不挤
+   - locked-panel 收紧 padding
+   ================================================================ */
+@media (max-width: 640px) {
+  .lightbox {
+    padding: max(env(safe-area-inset-top, 12px), 12px) 0
+             calc(max(env(safe-area-inset-bottom, 12px), 12px) + 64px);
+    align-items: start;
+  }
+
+  .lightbox-inner {
+    max-width: 100vw;
+    width: 100%;
+    padding: 0 12px;
+  }
+
+  .lightbox-image {
+    max-width: 100%;
+    max-height: calc(100dvh - 220px);
+    margin: 0 auto;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .icon-button {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(8px);
+  }
+
+  .icon-button.close {
+    top: max(env(safe-area-inset-top, 10px), 10px);
+    right: 10px;
+    z-index: 2;
+  }
+
+  /* prev / next 改为底部居中两颗 */
+  .icon-button.prev,
+  .icon-button.next {
+    top: auto;
+    bottom: max(env(safe-area-inset-bottom, 12px), 12px);
+  }
+
+  .icon-button.prev {
+    left: calc(50% - 56px);
+    right: auto;
+  }
+
+  .icon-button.next {
+    right: auto;
+    left: calc(50% + 16px);
+  }
+
+  .lightbox-caption {
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 0 4px;
+  }
+
+  .lightbox-caption strong {
+    font-size: 18px;
+    line-height: 1.3;
+  }
+
+  .lightbox-caption > span:last-child {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.72;
+  }
+
+  /* 加锁 / 私密 面板 */
+  .locked-panel {
+    width: min(420px, 92vw);
+    padding: 28px 22px;
+  }
+
+  /* ============================================================
+     管理端 dialog 移动端适配
+     ============================================================ */
+  .modal-backdrop {
+    padding: 12px;
+    align-items: end;       /* 弹窗贴底，类似 iOS bottom-sheet */
+  }
+
+  .photo-dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 24px);
+    padding: 18px 16px 0;   /* 底部由 sticky footer 自己 padding */
+    gap: 14px;
+    border-radius: 14px;
+  }
+
+  .photo-dialog header {
+    margin: 0 0 2px;
+  }
+
+  /* 标题字号在窄屏再小一些 */
+  .photo-dialog h2 {
+    font-size: 17px;
+  }
+
+  /* 保存/取消区粘底，避免长表单滚到最下面才能点 */
+  .dialog-actions {
+    position: sticky;
+    bottom: 0;
+    margin: 4px -16px 0;
+    padding: 12px 16px max(env(safe-area-inset-bottom, 12px), 12px);
+    background: var(--bg);
+    border-top: 1px solid var(--rule);
+    z-index: 2;
+  }
+
+  .admin-shell.sidebar .dialog-actions {
+    background: var(--admin-card-bg, #fff);
+    border-top-color: var(--admin-rule, #edeef0);
+  }
+
+  /* 隐私三选项窄屏改竖排 */
+  .privacy-options {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  /* form preview 高度收紧 */
+  .form-preview {
+    aspect-ratio: 16 / 10;
+    border-radius: 10px;
+  }
+
+  /* bulk dialog 同样窄屏满宽 */
+  .bulk-dialog {
+    width: 100%;
+    max-width: 100%;
   }
 }

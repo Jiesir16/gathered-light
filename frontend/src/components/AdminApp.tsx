@@ -21,7 +21,22 @@ import type {
   UserListItem,
   UserRole
 } from "../types";
-import { CloseIcon } from "./Icons";
+import {
+  CloseIcon,
+  DashboardIcon,
+  ExternalLinkIcon,
+  FolderIcon,
+  MenuIcon,
+  PhotosIcon,
+  PlusIcon,
+  SearchIcon,
+  SignOutIcon,
+  TagIcon,
+  UsersIcon
+} from "./Icons";
+import type { User } from "../types";
+
+type AdminTab = "dashboard" | "photos" | "users" | "tags" | "categories";
 
 type FormState = {
   slug: string;
@@ -112,8 +127,9 @@ function toPayload(form: FormState): PhotoPayload {
 export function AdminApp() {
   const { lang, setLang, t } = useLang();
   const [authed, setAuthed] = useState(hasSession);
-  const [activeTab, setActiveTab] =
-    useState<"dashboard" | "photos" | "users" | "tags" | "categories">("dashboard");
+  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
+  const [me, setMe] = useState<User | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [totalPhotos, setTotalPhotos] = useState(0);
   const [page, setPage] = useState(1);
@@ -173,6 +189,20 @@ export function AdminApp() {
   useEffect(() => {
     setSelected((prev) => new Set(photos.filter((photo) => prev.has(photo.id)).map((photo) => photo.id)));
   }, [photos]);
+
+  useEffect(() => {
+    if (!authed) {
+      setMe(null);
+      return;
+    }
+    let alive = true;
+    api.me().then((resp) => { if (alive) setMe(resp.user); }).catch(() => {});
+    return () => { alive = false; };
+  }, [authed]);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [activeTab]);
 
   const stats = useMemo(() => ({
     total: totalPhotos,
@@ -244,143 +274,211 @@ export function AdminApp() {
     return <LoginPanel onAuthed={() => setAuthed(true)} />;
   }
 
+  const tabMeta: Record<AdminTab, { title: string; subtitle: string }> = {
+    dashboard: { title: t.dashboard as string, subtitle: t.dashboardSub as string },
+    photos: { title: t.photos as string, subtitle: t.photosSub as string },
+    users: { title: t.users as string, subtitle: t.usersSub as string },
+    tags: { title: t.tags as string, subtitle: t.tagsSub as string },
+    categories: { title: t.categoriesAdmin as string, subtitle: t.categoriesSub as string }
+  };
+
+  const currentMeta = tabMeta[activeTab];
+
   return (
-    <div className="admin-shell">
-      <header className="admin-topbar">
-        <a className="brand" href="/">
-          <span>{t.siteName}</span>
-          <small>{t.admin}</small>
-        </a>
-        <nav className="filters" aria-label="Admin sections">
-          <button className={activeTab === "dashboard" ? "active" : ""} onClick={() => setActiveTab("dashboard")}>{t.dashboard as string}</button>
-          <button className={activeTab === "photos" ? "active" : ""} onClick={() => setActiveTab("photos")}>{t.photos as string}</button>
-          <button className={activeTab === "users" ? "active" : ""} onClick={() => setActiveTab("users")}>{t.users as string}</button>
-          <button className={activeTab === "tags" ? "active" : ""} onClick={() => setActiveTab("tags")}>{t.tags as string}</button>
-          <button className={activeTab === "categories" ? "active" : ""} onClick={() => setActiveTab("categories")}>{t.categoriesAdmin as string}</button>
-        </nav>
-        <div className="top-actions">
-          <div className="lang-switch">
-            <button className={lang === "zh" ? "active" : ""} onClick={() => setLang("zh")}>中</button>
-            <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
-          </div>
-          <a className="text-link" href="/">{t.site}</a>
-          <button className="text-link" onClick={() => void signOut()}>{t.logout}</button>
+    <div className={`admin-shell sidebar${sidebarOpen ? " open" : ""}`}>
+      <aside className="admin-sidebar" aria-label="Admin navigation">
+        <div className="sidebar-brand">
+          <a href="/" className="brand stacked">
+            <span>{t.siteName}</span>
+            <small>{t.admin}</small>
+          </a>
         </div>
-      </header>
 
-      <main className="admin-main">
-        {activeTab === "dashboard" ? (
-          <DashboardView />
-        ) : activeTab === "photos" ? (
-          <>
-            <section className="stats-grid">
-              <Stat label={t.total as string} value={stats.total} />
-              <Stat label={t.public as string} value={stats.public} />
-              <Stat label={t.locked as string} value={stats.locked} />
-              <Stat label={t.private as string} value={stats.private} />
-            </section>
+        <nav className="sidebar-nav">
+          <div className="nav-group">
+            <span className="nav-group-label">{t.navContent as string}</span>
+            <SidebarItem icon={<DashboardIcon />} label={t.dashboard as string} active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} />
+            <SidebarItem icon={<PhotosIcon />} label={t.photos as string} active={activeTab === "photos"} onClick={() => setActiveTab("photos")} />
+          </div>
 
-            <section className="toolbar">
-              <div className="filters">
-                <FilterButton active={filter === "all"} onClick={() => setFilter("all")} label="All" count={stats.total} />
-                <FilterButton active={filter === "public"} onClick={() => setFilter("public")} label={t.public as string} count={stats.public} />
-                <FilterButton active={filter === "locked"} onClick={() => setFilter("locked")} label={t.locked as string} count={stats.locked} />
-                <FilterButton active={filter === "private"} onClick={() => setFilter("private")} label={t.private as string} count={stats.private} />
-                {categories.filter((item) => item.key !== "all").map((item) => (
-                  <FilterButton key={item.key} active={filter === item.key} onClick={() => setFilter(item.key)} label={item[lang]} count={photos.filter((photo) => photo.cat === item.key).length} />
-                ))}
+          <div className="nav-group">
+            <span className="nav-group-label">{t.navTaxonomy as string}</span>
+            <SidebarItem icon={<TagIcon />} label={t.tags as string} active={activeTab === "tags"} onClick={() => setActiveTab("tags")} />
+            <SidebarItem icon={<FolderIcon />} label={t.categoriesAdmin as string} active={activeTab === "categories"} onClick={() => setActiveTab("categories")} />
+          </div>
+
+          <div className="nav-group">
+            <span className="nav-group-label">{t.navAccess as string}</span>
+            <SidebarItem icon={<UsersIcon />} label={t.users as string} active={activeTab === "users"} onClick={() => setActiveTab("users")} />
+          </div>
+        </nav>
+
+        <div className="sidebar-footer">
+          {me && (
+            <div className="sidebar-user">
+              <div className="avatar">{(me.display_name || me.email).slice(0, 1).toUpperCase()}</div>
+              <div className="sidebar-user-text">
+                <strong>{me.display_name || me.email}</strong>
+                <span>{me.role}</span>
               </div>
-              <div className="toolbar-actions">
-                <input
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t.searchPlaceholder as string}
-                />
+            </div>
+          )}
+          <div className="sidebar-tools">
+            <div className="lang-switch">
+              <button className={lang === "zh" ? "active" : ""} onClick={() => setLang("zh")}>中</button>
+              <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
+            </div>
+            <a className="sidebar-link" href="/"><ExternalLinkIcon /> <span>{t.viewSite as string}</span></a>
+            <button className="sidebar-link" onClick={() => void signOut()}><SignOutIcon /> <span>{t.logout}</span></button>
+          </div>
+        </div>
+      </aside>
+
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+
+      <main className="admin-workspace">
+        <header className="workspace-topbar">
+          <button className="icon-only mobile-only" aria-label="Menu" onClick={() => setSidebarOpen((v) => !v)}>
+            <MenuIcon />
+          </button>
+          <div className="crumbs">
+            <span>{t.admin}</span>
+            <span className="crumbs-sep">/</span>
+            <span className="crumbs-current">{currentMeta.title}</span>
+          </div>
+          <div className="workspace-tools">
+            {me && <span className="hello">{t.welcomeBack as string}, {me.display_name || me.email.split("@")[0]}</span>}
+          </div>
+        </header>
+
+        <header className="page-header">
+          <div className="page-header-text">
+            <h1>{currentMeta.title}</h1>
+            <p>{currentMeta.subtitle}</p>
+          </div>
+          <div className="page-header-actions">
+            {activeTab === "photos" && (
+              <>
                 <button className="secondary" onClick={() => void reset()}>{t.reset}</button>
-                <button className="primary" onClick={() => setCreating(true)}>+ {t.newPhoto}</button>
-              </div>
-            </section>
-
-            {selected.size > 0 && (
-              <section className="bulk-toolbar">
-                <span>{(t.bulkSelected as (count: number) => string)(selected.size)}</span>
-                <button onClick={selectAll}>{t.selectAll as string}</button>
-                <button onClick={invertSelection}>{t.invertSelection as string}</button>
-                <button onClick={clearSelection}>{t.clearSelection as string}</button>
-                <span className="bulk-sep" />
-                <button className="danger" onClick={() => setBulkAction("delete")}>{t.bulkDelete as string}</button>
-                <button onClick={() => setBulkAction("privacy")}>{t.bulkPrivacy as string}</button>
-                <button onClick={() => setBulkAction("tags")}>{t.bulkTags as string}</button>
-              </section>
+                <button className="primary" onClick={() => setCreating(true)}><PlusIcon /> {t.newPhoto}</button>
+              </>
             )}
+          </div>
+        </header>
 
-            {loading && <div className="state-line">Loading...</div>}
-            {error && <div className="state-line error">{error}</div>}
-            {notice && <div className="state-line success">{notice}</div>}
+        <div className="workspace-body">
+          {activeTab === "dashboard" ? (
+            <DashboardView />
+          ) : activeTab === "photos" ? (
+            <>
+              <section className="stats-grid">
+                <Stat label={t.total as string} value={stats.total} />
+                <Stat label={t.public as string} value={stats.public} />
+                <Stat label={t.locked as string} value={stats.locked} />
+                <Stat label={t.private as string} value={stats.private} />
+              </section>
 
-            <section className="admin-table">
-              <div className="table-head">
-                <span>
-                  <input
-                    className="row-checkbox"
-                    type="checkbox"
-                    checked={photos.length > 0 && selected.size === photos.length}
-                    onChange={(event) => event.target.checked ? selectAll() : clearSelection()}
-                  />
-                </span>
-                <span>Image</span>
-                <span>{t.title as string}</span>
-                <span>{t.category as string}</span>
-                <span>{t.date as string}</span>
-                <span>{t.privacy as string}</span>
-                <span>{t.actions as string}</span>
-              </div>
-              {photos.length === 0 ? (
-                <div className="empty-state">{t.noFrames as string}</div>
-              ) : photos.map((photo) => (
-                <article className="table-row" key={photo.id}>
-                  <input
-                    className="row-checkbox"
-                    type="checkbox"
-                    checked={selected.has(photo.id)}
-                    onChange={() => toggleSelected(photo.id)}
-                  />
-                  <img src={photo.src} alt="" />
-                  <div className="row-title">
-                    <strong>{photo.title[lang]}</strong>
-                    <span>{photo.loc[lang]}</span>
+              <section className="toolbar card">
+                <div className="filters chips">
+                  <FilterButton active={filter === "all"} onClick={() => setFilter("all")} label="All" count={stats.total} />
+                  <FilterButton active={filter === "public"} onClick={() => setFilter("public")} label={t.public as string} count={stats.public} />
+                  <FilterButton active={filter === "locked"} onClick={() => setFilter("locked")} label={t.locked as string} count={stats.locked} />
+                  <FilterButton active={filter === "private"} onClick={() => setFilter("private")} label={t.private as string} count={stats.private} />
+                  {categories.filter((item) => item.key !== "all").map((item) => (
+                    <FilterButton key={item.key} active={filter === item.key} onClick={() => setFilter(item.key)} label={item[lang]} count={photos.filter((photo) => photo.cat === item.key).length} />
+                  ))}
+                </div>
+                <div className="toolbar-actions">
+                  <div className="search-input">
+                    <SearchIcon />
+                    <input
+                      type="search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder={t.searchPlaceholder as string}
+                    />
                   </div>
-                  <span>{categories.find((item) => item.key === photo.cat)?.[lang]}</span>
-                  <span>{photo.date}</span>
-                  <button className={`privacy-pill ${photo.privacy}`} onClick={() => void cyclePrivacy(photo)}>{privacyLabel(photo.privacy, lang)}</button>
-                  <div className="row-actions">
-                    <button onClick={() => setEditing(photo)}>{t.edit}</button>
-                    <button onClick={() => void remove(photo)}>{t.delete}</button>
-                  </div>
-                </article>
-              ))}
-            </section>
+                </div>
+              </section>
 
-            <nav className="toolbar">
-              <div className="filters">
-                <FilterButton active onClick={() => undefined} label={(t.pageOf as (page: number, total: number) => string)(page, totalPages)} count={totalPhotos} />
-              </div>
-              <div className="toolbar-actions">
-                <button className="secondary" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>{t.prevPage as string}</button>
-                <button className="secondary" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>{t.nextPage as string}</button>
-              </div>
-            </nav>
+              {selected.size > 0 && (
+                <section className="bulk-toolbar">
+                  <span>{(t.bulkSelected as (count: number) => string)(selected.size)}</span>
+                  <button onClick={selectAll}>{t.selectAll as string}</button>
+                  <button onClick={invertSelection}>{t.invertSelection as string}</button>
+                  <button onClick={clearSelection}>{t.clearSelection as string}</button>
+                  <span className="bulk-sep" />
+                  <button className="danger" onClick={() => setBulkAction("delete")}>{t.bulkDelete as string}</button>
+                  <button onClick={() => setBulkAction("privacy")}>{t.bulkPrivacy as string}</button>
+                  <button onClick={() => setBulkAction("tags")}>{t.bulkTags as string}</button>
+                </section>
+              )}
 
-            <p className="admin-footnote">{t.apiSaved as string}</p>
-          </>
-        ) : activeTab === "users" ? (
-          <UsersView />
-        ) : activeTab === "tags" ? (
-          <TagsView />
-        ) : (
-          <CategoriesView />
-        )}
+              {loading && <div className="state-line">Loading...</div>}
+              {error && <div className="state-line error">{error}</div>}
+              {notice && <div className="state-line success">{notice}</div>}
+
+              <section className="admin-table card">
+                <div className="table-head">
+                  <span>
+                    <input
+                      className="row-checkbox"
+                      type="checkbox"
+                      checked={photos.length > 0 && selected.size === photos.length}
+                      onChange={(event) => event.target.checked ? selectAll() : clearSelection()}
+                    />
+                  </span>
+                  <span>Image</span>
+                  <span>{t.title as string}</span>
+                  <span>{t.category as string}</span>
+                  <span>{t.date as string}</span>
+                  <span>{t.privacy as string}</span>
+                  <span>{t.actions as string}</span>
+                </div>
+                {photos.length === 0 ? (
+                  <div className="empty-state">{t.noFrames as string}</div>
+                ) : photos.map((photo) => (
+                  <article className="table-row" key={photo.id}>
+                    <input
+                      className="row-checkbox"
+                      type="checkbox"
+                      checked={selected.has(photo.id)}
+                      onChange={() => toggleSelected(photo.id)}
+                    />
+                    <img src={photo.src} alt="" loading="lazy" decoding="async" />
+                    <div className="row-title">
+                      <strong>{photo.title[lang]}</strong>
+                      <span>{photo.loc[lang]}</span>
+                    </div>
+                    <span>{categories.find((item) => item.key === photo.cat)?.[lang]}</span>
+                    <span>{photo.date}</span>
+                    <button className={`privacy-pill ${photo.privacy}`} onClick={() => void cyclePrivacy(photo)}>{privacyLabel(photo.privacy, lang)}</button>
+                    <div className="row-actions">
+                      <button onClick={() => setEditing(photo)}>{t.edit}</button>
+                      <button onClick={() => void remove(photo)}>{t.delete}</button>
+                    </div>
+                  </article>
+                ))}
+              </section>
+
+              <nav className="toolbar pagination">
+                <div className="page-info">{(t.pageOf as (page: number, total: number) => string)(page, totalPages)} · {totalPhotos}</div>
+                <div className="toolbar-actions">
+                  <button className="secondary" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>{t.prevPage as string}</button>
+                  <button className="secondary" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>{t.nextPage as string}</button>
+                </div>
+              </nav>
+
+              <p className="admin-footnote">{t.apiSaved as string}</p>
+            </>
+          ) : activeTab === "users" ? (
+            <UsersView />
+          ) : activeTab === "tags" ? (
+            <TagsView />
+          ) : (
+            <CategoriesView />
+          )}
+        </div>
       </main>
 
       {(creating || editing) && (
@@ -583,7 +681,7 @@ function DashboardView() {
         <div className="dashboard-recent">
           {data.photos.recent.map((photo) => (
             <article key={photo.id}>
-              <img src={photo.src} alt="" />
+              <img src={photo.src} alt="" loading="lazy" decoding="async" />
               <strong>{photo.title[lang]}</strong>
               <span>{formatDate(photo.created_at)}</span>
             </article>
@@ -1382,7 +1480,7 @@ function PhotoDialog({
           <button type="button" className="icon-only" onClick={onClose} aria-label={t.close as string}><CloseIcon /></button>
         </header>
 
-        {previewSrc && <img className="form-preview" src={previewSrc} alt="" />}
+        {previewSrc && <img className="form-preview" src={previewSrc} alt="" decoding="async" />}
 
         <label className="span-2">
           <span>{t.imageUrl as string}</span>
@@ -1499,6 +1597,15 @@ function Stat({ label, value }: { label: string; value: number }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" className={`sidebar-item${active ? " active" : ""}`} onClick={onClick}>
+      <span className="sidebar-item-icon">{icon}</span>
+      <span className="sidebar-item-label">{label}</span>
+    </button>
   );
 }
 
