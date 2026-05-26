@@ -99,7 +99,7 @@ function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: 
   return (
     <figure className="photo-card" onClick={onOpen}>
       <div className="photo-media">
-        <img src={photo.src} alt={photo.title[lang]} className={hidden ? "obscured" : ""} loading="lazy" />
+        <img src={photo.src} alt={photo.title[lang]} className={hidden ? "obscured" : ""} loading="lazy" decoding="async" />
         {hidden && (
           <div className="photo-shield">
             {photo.privacy === "private" ? <EyeOffIcon /> : <LockIcon />}
@@ -169,7 +169,7 @@ function Lightbox({
             {error && <span className="form-error">{error}</span>}
           </div>
         ) : (
-          <img className="lightbox-image" src={photo.src.replace(/w=\d+/, "w=1800")} alt={photo.title[lang]} />
+          <img className="lightbox-image" src={photo.src.replace(/w=\d+/, "w=1800")} alt={photo.title[lang]} decoding="async" fetchPriority="high" />
         )}
         <div className="lightbox-caption">
           <div>
