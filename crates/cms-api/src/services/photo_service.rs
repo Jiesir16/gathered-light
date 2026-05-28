@@ -16,8 +16,8 @@ use crate::{
     bootstrap::AppState,
     dto::photo_dto::{
         BulkDeleteReq, BulkPrivacyReq, BulkResp, BulkTagMode, BulkTagsReq, CategoryDto, I18nText,
-        PhotoDto, PhotoListQuery, PhotoListResp, PhotoQuery, PhotoReq, PrivacyReq, TagSummary,
-        UnlockReq, UnlockResp,
+        PhotoDto, PhotoListQuery, PhotoListResp, PhotoQuery, PhotoReq, PhotoVariants, PrivacyReq,
+        TagSummary, UnlockReq, UnlockResp,
     },
     error::{AppError, AppResult},
     infra::cache,
@@ -334,11 +334,25 @@ pub async fn seed_demo_photos(state: &AppState) -> AppResult<SeedReport> {
     Ok(report)
 }
 
-fn assemble_dto_with_cover(full: PhotoFull, cover: String, tags: Vec<tags::Model>) -> PhotoDto {
-    PhotoDto {
+async fn build_dto(
+    state: &AppState,
+    full: PhotoFull,
+    variants: &[media_variants::Model],
+    tags: Vec<tags::Model>,
+) -> AppResult<PhotoDto> {
+    let privacy = Privacy::from_str(&full.photo.privacy).unwrap_or(Privacy::Private);
+    let urls = build_variants_urls(state, &full.asset, variants, privacy).await?;
+    // src 字段保持兼容：取 medium，没有就 fallback thumb / original
+    let src = urls
+        .medium
+        .clone()
+        .or_else(|| urls.thumb.clone())
+        .or_else(|| urls.original.clone())
+        .unwrap_or_default();
+    Ok(PhotoDto {
         id: full.photo.id,
         slug: full.photo.slug.clone(),
-        src: cover,
+        src,
         cat: full.category_slug,
         title: I18nText {
             zh: full.title_zh,
@@ -351,8 +365,65 @@ fn assemble_dto_with_cover(full: PhotoFull, cover: String, tags: Vec<tags::Model
         caption: i18n_optional(full.caption_zh, full.caption_en),
         alt_text: i18n_optional(full.alt_text_zh, full.alt_text_en),
         date: full.photo.taken_at_label,
-        privacy: Privacy::from_str(&full.photo.privacy).unwrap_or(Privacy::Private),
+        privacy,
         tags: tags.into_iter().map(tag_summary).collect(),
+        variants: urls,
+    })
+}
+
+/// 把单张图所有 variants（含 original）按 privacy 转成 URL：
+/// - public：永久 URL（依赖 OSS ACL=public-read，零 TTL 开销）
+/// - locked/private：1h presigned
+/// - original：用户原始上传，**始终 presigned**（即使是 public 照片，避免无意中把 10MB 原图设公开外网可下）；TTL 24h
+async fn build_variants_urls(
+    state: &AppState,
+    asset: &media_assets::Model,
+    variants: &[media_variants::Model],
+    privacy: Privacy,
+) -> AppResult<PhotoVariants> {
+    let mut out = PhotoVariants::default();
+
+    // demo seed 数据 src 直接是外链 URL；4 个 variant 字段拿不到，但 original 直接用 URL
+    if asset.storage_key.starts_with("http://") || asset.storage_key.starts_with("https://") {
+        out.original = Some(asset.storage_key.clone());
+        out.medium = Some(asset.storage_key.clone());
+        out.full = Some(asset.storage_key.clone());
+        out.thumb = Some(asset.storage_key.clone());
+        return Ok(out);
+    }
+
+    let find = |name: &str| {
+        variants
+            .iter()
+            .find(|v| v.variant == name)
+            .map(|v| v.storage_key.as_str())
+    };
+
+    if let Some(key) = find("thumb_400") {
+        out.thumb = Some(variant_url(state, key, privacy).await?);
+    }
+    if let Some(key) = find("medium_900") {
+        out.medium = Some(variant_url(state, key, privacy).await?);
+    }
+    if let Some(key) = find("full_1800") {
+        out.full = Some(variant_url(state, key, privacy).await?);
+    }
+    if let Some(key) = find("webp_900") {
+        out.webp = Some(variant_url(state, key, privacy).await?);
+    }
+    // original 一律 presigned 1d（不公开 ACL，省得 10MB 原图被随便下）
+    out.original =
+        Some(media_service::presign_get(&state.s3, &state.config.s3, &asset.storage_key, 86400).await?);
+
+    Ok(out)
+}
+
+async fn variant_url(state: &AppState, key: &str, privacy: Privacy) -> AppResult<String> {
+    match privacy {
+        Privacy::Public => Ok(media_service::permanent_url(state, key)),
+        Privacy::Locked | Privacy::Private => {
+            media_service::presign_get(&state.s3, &state.config.s3, key, 3600).await
+        }
     }
 }
 
@@ -372,9 +443,7 @@ async fn find_dto(state: &AppState, id: i64) -> AppResult<PhotoDto> {
         .await
         .map_err(db_err)?;
     let tags = tags_map.remove(&row.photo.id).unwrap_or_default();
-    let privacy = Privacy::from_str(&row.photo.privacy).unwrap_or(Privacy::Private);
-    let cover = cover_url_for(state, &row.asset, variants, privacy).await?;
-    Ok(assemble_dto_with_cover(row, cover, tags))
+    build_dto(state, row, variants, tags).await
 }
 
 async fn assemble_list(state: &AppState, rows: Vec<PhotoFull>) -> AppResult<Vec<PhotoDto>> {
@@ -394,9 +463,7 @@ async fn assemble_list(state: &AppState, rows: Vec<PhotoFull>) -> AppResult<Vec<
             .map(Vec::as_slice)
             .unwrap_or(&[]);
         let tags = tags_map.get(&row.photo.id).cloned().unwrap_or_default();
-        let privacy = Privacy::from_str(&row.photo.privacy).unwrap_or(Privacy::Private);
-        let cover = cover_url_for(state, &row.asset, variants, privacy).await?;
-        out.push(assemble_dto_with_cover(row, cover, tags));
+        out.push(build_dto(state, row, variants, tags).await?);
     }
     Ok(out)
 }

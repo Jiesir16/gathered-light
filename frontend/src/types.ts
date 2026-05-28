@@ -32,9 +32,23 @@ export interface UpdateCategoryReq {
   sort_order?: number;
 }
 
+export interface PhotoVariants {
+  /** 长边 400px，列表缩略 */
+  thumb?: string;
+  /** 长边 900px JPG，瀑布流卡片 */
+  medium?: string;
+  /** 长边 1800px JPG，lightbox 大图 */
+  full?: string;
+  /** 长边 900px WebP，比 medium 再省 30-40% 带宽 */
+  webp?: string;
+  /** 用户上传的原图（10MB+），「保存原图」用 */
+  original?: string;
+}
+
 export interface Photo {
   id: number;
   slug: string;
+  /** 默认首图 URL（= variants.medium），保留兼容老前端代码；新代码用 variants */
   src: string;
   cat: string;
   title: I18nText;
@@ -44,6 +58,7 @@ export interface Photo {
   date: string;
   privacy: Privacy;
   tags: TagSummary[];
+  variants: PhotoVariants;
 }
 
 export interface TagSummary {
@@ -71,7 +86,7 @@ export interface UpdateTagReq {
   name?: I18nText;
 }
 
-export type PhotoPayload = Omit<Photo, "id" | "tags" | "slug" | "caption" | "alt_text"> & {
+export type PhotoPayload = Omit<Photo, "id" | "tags" | "slug" | "caption" | "alt_text" | "variants"> & {
   slug?: string;
   caption?: I18nText;
   alt_text?: I18nText;

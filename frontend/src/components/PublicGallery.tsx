@@ -96,10 +96,16 @@ export function PublicGallery() {
 
 function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: boolean; onOpen: () => void; lang: "zh" | "en" }) {
   const hidden = photo.privacy === "private" || (photo.privacy === "locked" && !unlocked);
+  // 优先 webp（现代浏览器自动选）→ medium JPG → 兜底 src
+  const jpgSrc = photo.variants?.medium ?? photo.src;
+  const webpSrc = photo.variants?.webp;
   return (
     <figure className="photo-card" onClick={onOpen}>
       <div className="photo-media">
-        <img src={photo.src} alt={photo.title[lang]} className={hidden ? "obscured" : ""} loading="lazy" decoding="async" />
+        <picture>
+          {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
+          <img src={jpgSrc} alt={photo.title[lang]} className={hidden ? "obscured" : ""} loading="lazy" decoding="async" />
+        </picture>
         {hidden && (
           <div className="photo-shield">
             {photo.privacy === "private" ? <EyeOffIcon /> : <LockIcon />}
@@ -169,7 +175,13 @@ function Lightbox({
             {error && <span className="form-error">{error}</span>}
           </div>
         ) : (
-          <img className="lightbox-image" src={photo.src.replace(/w=\d+/, "w=1800")} alt={photo.title[lang]} decoding="async" fetchPriority="high" />
+          <img
+            className="lightbox-image"
+            src={photo.variants?.full ?? photo.src.replace(/w=\d+/, "w=1800")}
+            alt={photo.title[lang]}
+            decoding="async"
+            fetchPriority="high"
+          />
         )}
         <div className="lightbox-caption">
           <div>

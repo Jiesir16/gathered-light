@@ -26,6 +26,8 @@ pub struct TagSummary {
 pub struct PhotoDto {
     pub id: i64,
     pub slug: String,
+    /// 默认首图 URL（瀑布流卡片）。等价于 variants.medium。
+    /// 保留是为了向后兼容老前端代码。新代码用 variants 字段。
     pub src: String,
     pub cat: String,
     pub title: I18nText,
@@ -37,6 +39,29 @@ pub struct PhotoDto {
     pub date: String,
     pub privacy: Privacy,
     pub tags: Vec<TagSummary>,
+    /// 各尺寸 URL：public 照片是永久 URL，locked/private 是 1h presigned。
+    /// 缺哪个 variant 就该字段空（worker 尚未跑完时 medium/full/webp 可能为 None）。
+    pub variants: PhotoVariants,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct PhotoVariants {
+    /// 长边 400px，列表缩略
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thumb: Option<String>,
+    /// 长边 900px JPG，瀑布流卡片
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub medium: Option<String>,
+    /// 长边 1800px，lightbox 详情
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub full: Option<String>,
+    /// 长边 900px WebP，比 medium 再省 30-40% 带宽（现代浏览器优先用）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub webp: Option<String>,
+    /// 用户上传的原图（10MB+），用于「保存原图」按钮
+    /// admin 接口必有；public 接口仅当 privacy=public 时有
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
