@@ -531,7 +531,7 @@ function Lightbox({
       )}
       <button className="icon-button prev" onClick={(event) => { event.stopPropagation(); onPrev(); }} aria-label={t.prev as string}><ArrowIcon direction="left" /></button>
       <button className="icon-button next" onClick={(event) => { event.stopPropagation(); onNext(); }} aria-label={t.next as string}><ArrowIcon /></button>
-      <div className="lightbox-inner" onClick={(event) => event.stopPropagation()}>
+      <div className={`lightbox-inner${privatePhoto || locked ? " locked-state" : ""}`} onClick={(event) => event.stopPropagation()}>
         {privatePhoto ? (
           <div className="locked-panel"><EyeOffIcon size={28} /><p>{t.privateOnly as string}</p></div>
         ) : locked ? (

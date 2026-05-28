@@ -508,6 +508,10 @@ a {
   animation: panelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+.lightbox-inner.locked-state {
+  width: min(420px, 92vw);
+}
+
 .lightbox-stage {
   width: 100%;
   height: min(76vh, 780px);
@@ -562,6 +566,15 @@ a {
   display: flex;
   justify-content: space-between;
   gap: 32px;
+}
+
+.lightbox-inner.locked-state .lightbox-caption {
+  justify-content: center;
+  text-align: center;
+}
+
+.lightbox-inner.locked-state .lightbox-caption > span {
+  display: none;
 }
 
 .lightbox-caption strong {
@@ -648,7 +661,8 @@ a {
 }
 
 .locked-panel {
-  width: min(420px, 90vw);
+  width: min(420px, 100%);
+  margin: 0 auto;
   padding: 48px;
   display: grid;
   justify-items: center;
@@ -2150,6 +2164,11 @@ body:has(.admin-shell.sidebar) .photo-dialog {
     padding: 0 12px;
   }
 
+  .lightbox-inner.locked-state {
+    max-width: 420px;
+    width: 100%;
+  }
+
   .lightbox-stage {
     height: calc(100dvh - 220px);
   }
@@ -2227,7 +2246,8 @@ body:has(.admin-shell.sidebar) .photo-dialog {
 
   /* 加锁 / 私密 面板 */
   .locked-panel {
-    width: min(420px, 92vw);
+    width: 100%;
+    max-width: 420px;
     padding: 28px 22px;
   }
 
