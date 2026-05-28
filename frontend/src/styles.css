@@ -290,6 +290,7 @@ a {
 
 .intro-title {
   margin: 0;
+  max-width: 860px;
   font-family: "Noto Serif SC", "Cormorant Garamond", Georgia, serif;
   font-size: clamp(30px, 4vw, 56px);
   font-weight: 500;
