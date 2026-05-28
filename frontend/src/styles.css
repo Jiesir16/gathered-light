@@ -136,6 +136,10 @@ a {
   .typewriter-caret {
     animation: none !important;
   }
+  .topbar > .brand::after {
+    animation: none !important;
+    opacity: 0;
+  }
 }
 
 .topbar,
@@ -171,6 +175,45 @@ a {
   flex: 0 0 auto;
 }
 
+.topbar > .brand {
+  position: relative;
+  isolation: isolate;
+  margin-left: -12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.topbar > .brand::before,
+.topbar > .brand::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.topbar > .brand::before {
+  inset: -18px -28px;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 24% 50%, color-mix(in srgb, var(--accent) 18%, white) 0%, transparent 54%),
+    radial-gradient(ellipse at 58% 45%, rgba(255, 255, 255, 0.5) 0%, transparent 48%);
+  opacity: 0.48;
+  filter: blur(9px);
+}
+
+.topbar > .brand::after {
+  top: -34%;
+  bottom: -34%;
+  left: -46%;
+  z-index: 0;
+  width: 54px;
+  background: linear-gradient(102deg, transparent 0%, rgba(255, 255, 255, 0.56) 48%, transparent 100%);
+  transform: rotate(9deg);
+  animation: brandLightSweep 7.2s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+  opacity: 0.72;
+}
+
 .brand span,
 .brand strong,
 .login-card .brand span {
@@ -180,11 +223,41 @@ a {
   line-height: 1;
 }
 
+.topbar > .brand span,
+.topbar > .brand small {
+  position: relative;
+  z-index: 1;
+}
+
+.topbar > .brand span {
+  text-shadow:
+    0 0 18px color-mix(in srgb, var(--accent) 16%, transparent),
+    0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
 .brand small {
   color: var(--muted);
   font-size: 10px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
+}
+
+.topbar > .brand small {
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.52);
+}
+
+@keyframes brandLightSweep {
+  0%, 28% {
+    transform: translateX(0) rotate(9deg);
+    opacity: 0;
+  }
+  42%, 54% {
+    opacity: 0.72;
+  }
+  70%, 100% {
+    transform: translateX(310px) rotate(9deg);
+    opacity: 0;
+  }
 }
 
 .brand.stacked {
