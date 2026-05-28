@@ -348,7 +348,7 @@ a {
   break-inside: avoid;
   overflow: hidden;
   background: var(--panel);
-  cursor: zoom-in;
+  cursor: pointer;
   animation: cardIn 320ms ease backwards;
 }
 
@@ -387,41 +387,6 @@ a {
 .photo-media img.obscured {
   filter: blur(18px);
   transform: scale(1.1);
-}
-
-.photo-open-cue {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  opacity: 0;
-  pointer-events: none;
-  background: rgba(0, 0, 0, 0.14);
-  transition: opacity 180ms ease;
-}
-
-.photo-open-cue span {
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 50%;
-  color: white;
-  background: rgba(20, 18, 15, 0.24);
-  backdrop-filter: blur(10px);
-  transform: translateY(4px) scale(0.96);
-  transition: transform 180ms ease;
-}
-
-.photo-card:hover .photo-open-cue,
-.photo-card:focus-visible .photo-open-cue {
-  opacity: 1;
-}
-
-.photo-card:hover .photo-open-cue span,
-.photo-card:focus-visible .photo-open-cue span {
-  transform: none;
 }
 
 .photo-shield {

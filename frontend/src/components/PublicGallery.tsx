@@ -11,7 +11,7 @@ import { categories } from "../i18n";
 import { useLang } from "../hooks/useLang";
 import { usePhotos } from "../hooks/usePhotos";
 import type { Photo } from "../types";
-import { ArrowIcon, CloseIcon, DownloadIcon, EyeOffIcon, FitIcon, LockIcon, SearchIcon, ZoomInIcon, ZoomOutIcon } from "./Icons";
+import { ArrowIcon, CloseIcon, DownloadIcon, EyeOffIcon, FitIcon, LockIcon, ZoomInIcon, ZoomOutIcon } from "./Icons";
 
 export function PublicGallery() {
   const { lang, setLang, t } = useLang();
@@ -134,11 +134,6 @@ function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: 
             onLoad={(event) => { event.currentTarget.dataset.loaded = "true"; }}
           />
         </picture>
-        {!hidden && (
-          <div className="photo-open-cue" aria-hidden="true">
-            <span><SearchIcon size={18} /></span>
-          </div>
-        )}
         {hidden && (
           <div className="photo-shield">
             {photo.privacy === "private" ? <EyeOffIcon /> : <LockIcon />}
