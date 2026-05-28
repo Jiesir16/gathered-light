@@ -72,6 +72,10 @@ pub fn build(state: AppState) -> Router {
             patch(photo_handler::update_privacy),
         )
         .route(
+            "/admin/photos/:id/recover-url",
+            post(photo_handler::recover_urls),
+        )
+        .route(
             "/admin/tags",
             get(tag_handler::list_admin).post(tag_handler::create),
         )

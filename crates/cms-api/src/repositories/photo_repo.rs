@@ -1,5 +1,5 @@
 use cms_domain::Privacy;
-use cms_entity::{categories, media_assets, photo_translations, photos};
+use cms_entity::{categories, media_assets, media_variants, photo_translations, photos};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
     EntityTrait, FromQueryResult, PaginatorTrait, QueryFilter, QuerySelect, Set, Statement,
@@ -288,6 +288,74 @@ pub async fn update_privacy(
     .update(db)
     .await
     .map(|_| ())
+}
+
+pub async fn recover_expired_media_urls(
+    db: &DatabaseConnection,
+    photo_id: i64,
+    current_asset_id: i64,
+    recovered_asset_key: Option<&str>,
+    variant_repairs: &[(i64, String)],
+) -> Result<i64, DbErr> {
+    let txn = db.begin().await?;
+    let mut effective_asset_id = current_asset_id;
+
+    if let Some(key) = recovered_asset_key {
+        if let Some(existing) = media_assets::Entity::find()
+            .filter(media_assets::Column::StorageKey.eq(key))
+            .one(&txn)
+            .await?
+        {
+            if existing.id != current_asset_id {
+                photos::ActiveModel {
+                    id: Set(photo_id),
+                    primary_asset_id: Set(existing.id),
+                    ..Default::default()
+                }
+                .update(&txn)
+                .await?;
+            }
+            effective_asset_id = existing.id;
+        } else {
+            let asset = media_assets::Entity::find_by_id(current_asset_id)
+                .one(&txn)
+                .await?
+                .ok_or_else(|| DbErr::RecordNotFound(format!("media_asset {current_asset_id}")))?;
+            let mut active: media_assets::ActiveModel = asset.into();
+            active.storage_key = Set(key.to_owned());
+            active.update(&txn).await?;
+        }
+    }
+
+    for (variant_id, key) in variant_repairs {
+        let variant = media_variants::Entity::find_by_id(*variant_id)
+            .one(&txn)
+            .await?
+            .ok_or_else(|| DbErr::RecordNotFound(format!("media_variant {variant_id}")))?;
+        let mut active: media_variants::ActiveModel = variant.into();
+        active.storage_key = Set(key.to_owned());
+        active.update(&txn).await?;
+    }
+
+    let has_variants = media_variants::Entity::find()
+        .filter(media_variants::Column::AssetId.eq(effective_asset_id))
+        .one(&txn)
+        .await?
+        .is_some();
+    if !has_variants {
+        let asset = media_assets::Entity::find_by_id(effective_asset_id)
+            .one(&txn)
+            .await?
+            .ok_or_else(|| DbErr::RecordNotFound(format!("media_asset {effective_asset_id}")))?;
+        if asset.status != "pending" && asset.status != "processing" {
+            let mut active: media_assets::ActiveModel = asset.into();
+            active.status = Set("pending".to_owned());
+            active.update(&txn).await?;
+        }
+    }
+
+    txn.commit().await?;
+    Ok(effective_asset_id)
 }
 
 /// 按主图 asset id 查 photo 的隐私值（worker 决定 variants ACL 时用）。

@@ -149,6 +149,8 @@ const adminPhotoApi = {
       method: "PATCH",
       body: { privacy }
     }),
+  recoverUrl: (id: number) =>
+    request<Photo>(`/api/v1/admin/photos/${id}/recover-url`, { method: "POST" }),
   bulkDelete: (req: BulkDeleteReq) =>
     request<BulkResp>("/api/v1/admin/photos/bulk/delete", { method: "POST", body: req }),
   bulkPrivacy: (req: BulkPrivacyReq) =>

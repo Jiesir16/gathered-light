@@ -162,6 +162,73 @@ pub async fn update_privacy(state: &AppState, id: i64, req: PrivacyReq) -> AppRe
     find_dto(state, id, DtoScope::Admin).await
 }
 
+#[tracing::instrument(skip(state))]
+pub async fn recover_urls(state: &AppState, id: i64) -> AppResult<PhotoDto> {
+    let current = photo_repo::find_by_id(&state.db, id)
+        .await
+        .map_err(db_err)?
+        .ok_or(AppError::NotFound)?;
+    let variants_map = media_repo::find_variants_for_assets(&state.db, &[current.asset.id])
+        .await
+        .map_err(db_err)?;
+    let variant_repairs: Vec<(i64, String)> = variants_map
+        .get(&current.asset.id)
+        .map(|variants| {
+            variants
+                .iter()
+                .filter_map(|variant| {
+                    object_key_from_stored_url(&variant.storage_key, &["variants/"])
+                        .map(|key| (variant.id, key))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    let recovered_asset_key = object_key_from_stored_url(&current.asset.storage_key, &["uploads/"]);
+
+    let effective_asset_id = photo_repo::recover_expired_media_urls(
+        &state.db,
+        id,
+        current.asset.id,
+        recovered_asset_key.as_deref(),
+        &variant_repairs,
+    )
+    .await
+    .map_err(db_err)?;
+
+    if effective_asset_id != current.asset.id {
+        let variants_map = media_repo::find_variants_for_assets(&state.db, &[effective_asset_id])
+            .await
+            .map_err(db_err)?;
+        if let Some(variants) = variants_map.get(&effective_asset_id) {
+            let variant_repairs: Vec<(i64, String)> = variants
+                .iter()
+                .filter_map(|variant| {
+                    object_key_from_stored_url(&variant.storage_key, &["variants/"])
+                        .map(|key| (variant.id, key))
+                })
+                .collect();
+            if !variant_repairs.is_empty() {
+                photo_repo::recover_expired_media_urls(
+                    &state.db,
+                    id,
+                    effective_asset_id,
+                    None,
+                    &variant_repairs,
+                )
+                .await
+                .map_err(db_err)?;
+            }
+        }
+    }
+
+    let privacy = Privacy::from_str(&current.photo.privacy).unwrap_or(Privacy::Public);
+    if let Err(error) = sync_variants_acl_for_photo(state, id, privacy).await {
+        tracing::warn!(error = ?error, photo_id = id, "sync variants ACL after URL recovery failed");
+    }
+    cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
+    find_dto(state, id, DtoScope::Admin).await
+}
+
 pub async fn delete(state: &AppState, id: i64) -> AppResult<()> {
     photo_repo::delete(&state.db, id).await.map_err(db_err)?;
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
@@ -194,10 +261,9 @@ pub async fn bulk_update_privacy(state: &AppState, req: BulkPrivacyReq) -> AppRe
     } else {
         None
     };
-    let affected =
-        photo_repo::update_privacy_many(&state.db, &existing, req.privacy, passcode)
-            .await
-            .map_err(db_err)?;
+    let affected = photo_repo::update_privacy_many(&state.db, &existing, req.privacy, passcode)
+        .await
+        .map_err(db_err)?;
     // 批量翻 ACL（容错：单条失败不打断整批）
     for photo_id in &existing {
         if let Err(error) = sync_variants_acl_for_photo(state, *photo_id, req.privacy).await {
@@ -421,8 +487,9 @@ async fn build_variants_urls(
         out.webp = Some(variant_url(state, key, privacy).await?);
     }
     // original 一律 presigned 1d（不公开 ACL，省得 10MB 原图被随便下）
-    out.original =
-        Some(media_service::presign_get(&state.s3, &state.config.s3, &asset.storage_key, 86400).await?);
+    out.original = Some(
+        media_service::presign_get(&state.s3, &state.config.s3, &asset.storage_key, 86400).await?,
+    );
 
     Ok(out)
 }
@@ -581,6 +648,27 @@ fn skipped_ids(requested: &[i64], existing: &[i64]) -> Vec<i64> {
         .copied()
         .filter(|id| !existing_set.contains(id))
         .collect()
+}
+
+fn object_key_from_stored_url(value: &str, prefixes: &[&str]) -> Option<String> {
+    if !(value.starts_with("http://") || value.starts_with("https://")) {
+        return None;
+    }
+
+    let (start, prefix) = prefixes
+        .iter()
+        .filter_map(|prefix| value.find(prefix).map(|index| (index, *prefix)))
+        .min_by_key(|(index, _)| *index)?;
+    let key_with_query = &value[start..];
+    let end = key_with_query
+        .find(|c| c == '?' || c == '#')
+        .unwrap_or(key_with_query.len());
+    let key = key_with_query[..end].trim_matches('/');
+    if key.is_empty() || !key.starts_with(prefix) {
+        None
+    } else {
+        Some(key.to_owned())
+    }
 }
 
 /// 构造 NewPhoto。passcode 规则：

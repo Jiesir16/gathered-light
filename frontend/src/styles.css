@@ -883,7 +883,7 @@ a {
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: 34px 86px minmax(180px, 1fr) 130px 110px 120px 126px;
+  grid-template-columns: 34px 86px minmax(180px, 1fr) 130px 110px 120px 190px;
   gap: 16px;
   align-items: center;
 }
@@ -943,6 +943,7 @@ a {
 
 .row-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -952,6 +953,11 @@ a {
   background: transparent;
   color: var(--muted-2);
   font-size: 12px;
+}
+
+.row-actions button:disabled {
+  cursor: default;
+  opacity: 0.52;
 }
 
 .bulk-toolbar {

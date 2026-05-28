@@ -52,6 +52,13 @@ pub async fn update_privacy(
     Ok(Json(photo_service::update_privacy(&state, id, req).await?))
 }
 
+pub async fn recover_urls(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<Json<PhotoDto>> {
+    Ok(Json(photo_service::recover_urls(&state, id).await?))
+}
+
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
     photo_service::delete(&state, id).await?;
     Ok(StatusCode::NO_CONTENT)

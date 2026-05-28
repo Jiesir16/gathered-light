@@ -181,6 +181,7 @@ export function AdminApp() {
   const [editing, setEditing] = useState<Photo | null>(null);
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [recoveringId, setRecoveringId] = useState<number | null>(null);
   const debouncedSearch = useDebounce(search, 300);
   const pageSize = 20;
 
@@ -295,6 +296,20 @@ export function AdminApp() {
     const next = order[(order.indexOf(photo.privacy) + 1) % order.length];
     await api.adminPhotos.updatePrivacy(photo.id, next);
     await loadPhotos();
+  };
+
+  const recoverUrl = async (photo: Photo) => {
+    setRecoveringId(photo.id);
+    setError(null);
+    try {
+      const recovered = await api.adminPhotos.recoverUrl(photo.id);
+      setPhotos((prev) => prev.map((item) => item.id === recovered.id ? recovered : item));
+      setNotice(t.recoverUrlDone as string);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Recover failed");
+    } finally {
+      setRecoveringId(null);
+    }
   };
 
   const reset = async () => {
@@ -514,6 +529,9 @@ export function AdminApp() {
                     </div>
                     <div className="row-actions">
                       <button onClick={() => setEditing(photo)}>{t.edit}</button>
+                      <button onClick={() => void recoverUrl(photo)} disabled={recoveringId === photo.id}>
+                        {recoveringId === photo.id ? t.recoveringUrl as string : t.recoverUrl as string}
+                      </button>
                       <button onClick={() => void remove(photo)}>{t.delete}</button>
                     </div>
                   </article>
