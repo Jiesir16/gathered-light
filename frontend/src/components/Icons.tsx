@@ -106,6 +106,16 @@ export function FolderIcon({ size = 18, ...props }: IconProps) {
   );
 }
 
+export function PaintBucketIcon({ size = 18, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m4 13 8-8 7 7-8 8a2 2 0 0 1-2.8 0L4 15.8a2 2 0 0 1 0-2.8z" />
+      <path d="m9 4 7 7" />
+      <path d="M19 16s2 2.1 2 3.5a2 2 0 0 1-4 0C17 18.1 19 16 19 16z" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ size = 16, ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...props}>

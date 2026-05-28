@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { adminCategories, adminTags, adminUsers, api, clearSession, hasSession, login, logout } from "../api/client";
-import { categories } from "../i18n";
+import { adminCategories, adminSettings, adminTags, adminUsers, api, clearSession, hasSession, login, logout, settings } from "../api/client";
+import { categories, type Dictionary } from "../i18n";
 import { useDebounce } from "../hooks/useDebounce";
 import { useLang } from "../hooks/useLang";
 import type {
@@ -27,6 +27,7 @@ import {
   ExternalLinkIcon,
   FolderIcon,
   MenuIcon,
+  PaintBucketIcon,
   PhotosIcon,
   PlusIcon,
   SearchIcon,
@@ -36,7 +37,8 @@ import {
 } from "./Icons";
 import type { User } from "../types";
 
-type AdminTab = "dashboard" | "photos" | "users" | "tags" | "categories";
+type AdminTab = "dashboard" | "photos" | "users" | "tags" | "categories" | "appearance";
+type ThemeName = "warm" | "cool" | "bold";
 
 type FormState = {
   slug: string;
@@ -73,6 +75,36 @@ const emptyForm: FormState = {
   tagIds: [],
   passcode: ""
 };
+
+const themeOptions: Array<{
+  id: ThemeName;
+  nameKey: keyof Dictionary;
+  descKey: keyof Dictionary;
+  colors: string[];
+}> = [
+  {
+    id: "warm",
+    nameKey: "themeWarmName",
+    descKey: "themeWarmDesc",
+    colors: ["#fbfaf7", "#f4f1ea", "#1a1814", "#3f5f4a"]
+  },
+  {
+    id: "cool",
+    nameKey: "themeCoolName",
+    descKey: "themeCoolDesc",
+    colors: ["#ffffff", "#f7f7f8", "#18181b", "#18181b"]
+  },
+  {
+    id: "bold",
+    nameKey: "themeBoldName",
+    descKey: "themeBoldDesc",
+    colors: ["#ffffff", "#f9f9f9", "#121212", "#b91c1c"]
+  }
+];
+
+function isTheme(value: string): value is ThemeName {
+  return themeOptions.some((option) => option.id === value);
+}
 
 function toForm(photo?: Photo): FormState {
   if (!photo) return emptyForm;
@@ -286,7 +318,8 @@ export function AdminApp() {
     photos: { title: t.photos as string, subtitle: t.photosSub as string },
     users: { title: t.users as string, subtitle: t.usersSub as string },
     tags: { title: t.tags as string, subtitle: t.tagsSub as string },
-    categories: { title: t.categoriesAdmin as string, subtitle: t.categoriesSub as string }
+    categories: { title: t.categoriesAdmin as string, subtitle: t.categoriesSub as string },
+    appearance: { title: t.appearance as string, subtitle: t.appearanceSub as string }
   };
 
   const currentMeta = tabMeta[activeTab];
@@ -317,6 +350,11 @@ export function AdminApp() {
           <div className="nav-group">
             <span className="nav-group-label">{t.navAccess as string}</span>
             <SidebarItem icon={<UsersIcon />} label={t.users as string} active={activeTab === "users"} onClick={() => setActiveTab("users")} />
+          </div>
+
+          <div className="nav-group">
+            <span className="nav-group-label">{t.navSystem as string}</span>
+            <SidebarItem icon={<PaintBucketIcon />} label={t.appearance as string} active={activeTab === "appearance"} onClick={() => setActiveTab("appearance")} />
           </div>
         </nav>
 
@@ -492,6 +530,8 @@ export function AdminApp() {
 
               <p className="admin-footnote">{t.apiSaved as string}</p>
             </>
+          ) : activeTab === "appearance" ? (
+            <AppearanceView onNotice={setNotice} />
           ) : activeTab === "users" ? (
             <UsersView />
           ) : activeTab === "tags" ? (
@@ -715,6 +755,95 @@ function DashboardView() {
         <p className="dashboard-media-line">
           pending {data.media.pending} · processing {data.media.processing} · ready {data.media.ready} · failed {data.media.failed} · total {data.media.total}
         </p>
+      </section>
+    </>
+  );
+}
+
+function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
+  const { t } = useLang();
+  const [current, setCurrent] = useState<ThemeName>("warm");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<ThemeName | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setLocalNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError(null);
+    settings
+      .get()
+      .then((resp) => {
+        if (!alive || !isTheme(resp.theme)) return;
+        setCurrent(resp.theme);
+        document.documentElement.dataset.theme = resp.theme;
+      })
+      .catch((err) => {
+        if (alive) setError(err instanceof Error ? err.message : "Load theme failed");
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const applyTheme = async (theme: ThemeName) => {
+    setSaving(theme);
+    setError(null);
+    setLocalNotice(null);
+    try {
+      const resp = await adminSettings.updateTheme(theme);
+      const nextTheme = isTheme(resp.theme) ? resp.theme : theme;
+      const option = themeOptions.find((item) => item.id === nextTheme) ?? themeOptions[0];
+      const themeName = t[option.nameKey] as string;
+      const message = (t.themeApplied as (name: string) => string)(themeName);
+      document.documentElement.dataset.theme = nextTheme;
+      setCurrent(nextTheme);
+      setLocalNotice(message);
+      onNotice(message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update theme failed");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <>
+      {loading && <div className="state-line">Loading...</div>}
+      {error && <div className="state-line error">{error}</div>}
+      {notice && <div className="state-line success">{notice}</div>}
+
+      <section className="theme-picker">
+        {themeOptions.map((option) => {
+          const active = option.id === current;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              className={`theme-card${active ? " active" : ""}`}
+              disabled={saving !== null}
+              onClick={() => void applyTheme(option.id)}
+            >
+              <span className="theme-card-top">
+                <span className="theme-card-copy">
+                  <strong>{t[option.nameKey] as string}</strong>
+                  <span>{t[option.descKey] as string}</span>
+                </span>
+                {active && <span className="theme-check" aria-hidden="true">✓</span>}
+              </span>
+              <span className="theme-swatches" aria-hidden="true">
+                {option.colors.map((color, index) => (
+                  <span key={`${option.id}-${color}-${index}`} className="theme-swatch" style={{ background: color }} />
+                ))}
+              </span>
+              {saving === option.id && <span className="theme-status">Saving...</span>}
+            </button>
+          );
+        })}
       </section>
     </>
   );
