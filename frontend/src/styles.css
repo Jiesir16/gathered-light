@@ -271,13 +271,13 @@ a {
   margin: 0 auto;
   padding: 76px 56px 58px;
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.8fr);
-  gap: 64px;
+  grid-template-columns: minmax(0, 2.1fr) minmax(260px, 0.7fr);
+  gap: 56px;
   align-items: end;
 }
 
 .intro-copy {
-  max-width: 880px;
+  max-width: 980px;
 }
 
 .intro-kicker {
