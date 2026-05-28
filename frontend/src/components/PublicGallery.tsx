@@ -67,7 +67,9 @@ export function PublicGallery() {
 
         {loading && <div className="state-line">Loading...</div>}
         {error && <div className="state-line error">{error}</div>}
-        <section className="masonry">
+        {/* key={category} 让切类别时整个 masonry remount，
+            触发 .photo-card 的 cardIn 动画 + 重新跑图片 onLoad 淡入 */}
+        <section className="masonry" key={category}>
           {filtered.map((photo) => (
             <PhotoCard key={photo.id} photo={photo} unlocked={unlocked.has(photo.id)} onOpen={() => setActiveId(photo.id)} lang={lang} />
           ))}
