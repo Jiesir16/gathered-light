@@ -14,11 +14,8 @@ export const i18n = {
     range: "2023 - 2026",
     issue: "拾光为集 · 个人影像手记",
     headline: "拾起那些被光掠过的、缓慢而不起眼的寻常一刻。",
-    headlineLines: [
-      "拾起那些被光掠过的、",
-      "缓慢而不起眼的",
-      "寻常一刻。"
-    ],
+    headlineLead: "拾起",
+    headlineRest: "那些被光掠过的、缓慢而不起眼的寻常一刻。",
     intro: "街角、天气、窗台上的一杯茶，均被轻轻收录于此，留于多年以后翻看。",
     introLines: [
       "街角、天气、窗台上的一杯茶，均被轻轻收录于此，留于多年以后翻看。",
@@ -157,11 +154,8 @@ export const i18n = {
     range: "2023 - 2026",
     issue: "Field Notebook · Personal Archive",
     headline: "Quiet hours, borrowed light, and the small ordinary in between.",
-    headlineLines: [
-      "Quiet hours, borrowed light,",
-      "and the small ordinary",
-      "in between."
-    ],
+    headlineLead: "Quiet",
+    headlineRest: "hours, borrowed light, and the small ordinary in between.",
     intro: "Streets, weather, and slow afternoons of rooms, kept here to be wandered through later.",
     introLines: [
       "Streets, weather, and slow afternoons of rooms, kept here to be wandered through later.",

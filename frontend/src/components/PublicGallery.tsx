@@ -25,7 +25,6 @@ export function PublicGallery() {
     category === "all" ? photos : photos.filter((photo) => photo.cat === category)
   ), [category, photos]);
   const introLines = t.introLines;
-  const headlineLines = t.headlineLines;
   const active = filtered.find((photo) => photo.id === activeId) ?? null;
   const activeIndex = filtered.findIndex((photo) => photo.id === activeId);
 
@@ -130,16 +129,12 @@ export function PublicGallery() {
         <section className="intro">
           <div className="intro-copy">
             <p className="intro-kicker" aria-label={t.issue}>
-              <span className="intro-kicker-rule" aria-hidden="true" />
               <span>{t.issue}</span>
               <span className="intro-kicker-code">{t.range}</span>
             </p>
             <h1 className="intro-title" aria-label={t.headline}>
-              {headlineLines.map((line, index) => (
-                <span key={line} className={`intro-title-line line-${index + 1}`} aria-hidden="true">
-                  {line}
-                </span>
-              ))}
+              <span className="intro-title-lead" aria-hidden="true">{t.headlineLead}</span>
+              <span className="intro-title-rest" aria-hidden="true">{t.headlineRest}</span>
             </h1>
           </div>
           <aside>
