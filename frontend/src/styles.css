@@ -316,8 +316,13 @@ a {
   line-height: 1.9;
 }
 
-.typewriter-copy {
+.intro aside p.typewriter-copy {
   min-height: 58px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  line-height: 2.2;
+  text-transform: uppercase;
 }
 
 .typewriter-caret {
