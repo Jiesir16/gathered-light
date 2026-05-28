@@ -11,10 +11,9 @@
   --accent: #3f5f4a;
   --lightbox-bg: rgba(20, 18, 15, 0.82);
   --site-texture:
-    repeating-linear-gradient(90deg, rgba(90, 85, 76, 0.035) 0 1px, transparent 1px 18px),
-    repeating-linear-gradient(0deg, rgba(90, 85, 76, 0.028) 0 1px, transparent 1px 18px),
-    radial-gradient(circle at 2px 2px, rgba(26, 24, 20, 0.026) 0 0.8px, transparent 0.9px);
-  --site-texture-size: auto, auto, 7px 7px;
+    radial-gradient(circle at 1px 1px, rgba(26, 24, 20, 0.022) 0 0.65px, transparent 0.75px),
+    radial-gradient(circle at 4px 5px, rgba(255, 255, 255, 0.34) 0 0.55px, transparent 0.7px);
+  --site-texture-size: 8px 8px, 11px 11px;
 }
 
 :root[data-theme="cool"] {
@@ -28,10 +27,9 @@
   --accent: #18181b;
   --lightbox-bg: rgba(10, 10, 12, 0.82);
   --site-texture:
-    repeating-linear-gradient(90deg, rgba(24, 24, 27, 0.022) 0 1px, transparent 1px 20px),
-    repeating-linear-gradient(0deg, rgba(24, 24, 27, 0.018) 0 1px, transparent 1px 20px),
-    radial-gradient(circle at 2px 2px, rgba(24, 24, 27, 0.018) 0 0.7px, transparent 0.8px);
-  --site-texture-size: auto, auto, 8px 8px;
+    radial-gradient(circle at 1px 1px, rgba(24, 24, 27, 0.014) 0 0.55px, transparent 0.7px),
+    radial-gradient(circle at 5px 4px, rgba(255, 255, 255, 0.45) 0 0.5px, transparent 0.65px);
+  --site-texture-size: 9px 9px, 13px 13px;
 }
 
 :root[data-theme="bold"] {
@@ -45,10 +43,9 @@
   --accent: #b91c1c;
   --lightbox-bg: rgba(0, 0, 0, 0.85);
   --site-texture:
-    repeating-linear-gradient(90deg, rgba(18, 18, 18, 0.024) 0 1px, transparent 1px 18px),
-    repeating-linear-gradient(0deg, rgba(18, 18, 18, 0.02) 0 1px, transparent 1px 18px),
-    radial-gradient(circle at 2px 2px, rgba(185, 28, 28, 0.018) 0 0.7px, transparent 0.8px);
-  --site-texture-size: auto, auto, 8px 8px;
+    radial-gradient(circle at 1px 1px, rgba(18, 18, 18, 0.018) 0 0.6px, transparent 0.75px),
+    radial-gradient(circle at 5px 4px, rgba(185, 28, 28, 0.012) 0 0.5px, transparent 0.65px);
+  --site-texture-size: 8px 8px, 13px 13px;
 }
 
 :root {
@@ -501,20 +498,44 @@ a {
 }
 
 .lightbox-inner {
-  max-width: min(1100px, 92vw);
+  width: min(1180px, 92vw);
   color: white;
   /* 内容卡片轻微缩放出现，给点空间感（贝塞尔曲线让结尾更柔） */
   animation: panelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+.lightbox-stage {
+  width: 100%;
+  height: min(76vh, 780px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: zoom-in;
+  touch-action: none;
+}
+
+.lightbox-stage.zoomed {
+  cursor: grab;
+}
+
+.lightbox-stage.dragging {
+  cursor: grabbing;
+}
+
 .lightbox-image {
   display: block;
-  max-width: 92vw;
-  max-height: 76vh;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
+  user-select: none;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
-  /* 切 prev/next 时配合 React `key={photo.id}` remount 让动画重放 */
-  animation: lightboxImgIn 240ms ease forwards;
+  will-change: transform;
+  transition: transform 120ms ease;
+  animation: lightboxImgIn 180ms ease forwards;
+}
+
+.lightbox-stage.dragging .lightbox-image {
+  transition: none;
 }
 
 @keyframes overlayIn {
@@ -528,8 +549,8 @@ a {
 }
 
 @keyframes lightboxImgIn {
-  from { opacity: 0; transform: scale(0.99); }
-  to   { opacity: 1; transform: none; }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .lightbox-caption {
@@ -576,23 +597,50 @@ a {
   right: 24px;
 }
 
-/* lightbox 右上角动作组（查看原图 / 保存）─ 桌面端在 close 左边 */
 .lightbox-actions {
   position: absolute;
-  top: 24px;
-  right: 80px;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
+  align-items: center;
   gap: 8px;
-  z-index: 1;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(12, 12, 12, 0.28);
+  backdrop-filter: blur(14px);
+  z-index: 2;
 }
 
 .lightbox-actions .icon-button {
   position: static;
+  width: 38px;
+  height: 38px;
 }
 
-.lightbox-actions .icon-button:disabled {
-  opacity: 0.5;
-  cursor: progress;
+.lightbox-actions .icon-button:disabled,
+.lightbox-actions .viewer-quality:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.viewer-quality {
+  min-width: 58px;
+  height: 38px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.viewer-quality.active,
+.viewer-quality:hover:not(:disabled),
+.lightbox-actions .icon-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .locked-panel {
@@ -2089,9 +2137,13 @@ body:has(.admin-shell.sidebar) .photo-dialog {
     padding: 0 12px;
   }
 
+  .lightbox-stage {
+    height: calc(100dvh - 220px);
+  }
+
   .lightbox-image {
     max-width: 100%;
-    max-height: calc(100dvh - 220px);
+    max-height: 100%;
     margin: 0 auto;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   }
@@ -2109,11 +2161,13 @@ body:has(.admin-shell.sidebar) .photo-dialog {
     z-index: 2;
   }
 
-  /* actions（查看原图 / 保存）挪到左上，避免跟 close 撞 */
   .lightbox-actions {
     top: max(env(safe-area-inset-top, 10px), 10px);
     left: 10px;
     right: auto;
+    transform: none;
+    max-width: calc(100vw - 64px);
+    overflow-x: auto;
     z-index: 2;
   }
 

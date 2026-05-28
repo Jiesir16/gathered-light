@@ -1,10 +1,17 @@
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent as ReactWheelEvent
+} from "react";
 import { api } from "../api/client";
 import { categories } from "../i18n";
 import { useLang } from "../hooks/useLang";
 import { usePhotos } from "../hooks/usePhotos";
 import type { Photo } from "../types";
-import { ArrowIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeOffIcon, LockIcon, SearchIcon } from "./Icons";
+import { ArrowIcon, CloseIcon, DownloadIcon, EyeOffIcon, FitIcon, LockIcon, SearchIcon, ZoomInIcon, ZoomOutIcon } from "./Icons";
 
 export function PublicGallery() {
   const { lang, setLang, t } = useLang();
@@ -149,6 +156,20 @@ function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: 
   );
 }
 
+type ImageQuality = "full" | "original";
+type ViewerOffset = { x: number; y: number };
+
+const minZoom = 1;
+const maxZoom = 4;
+
+function clampZoom(value: number) {
+  return Math.min(maxZoom, Math.max(minZoom, Math.round(value * 100) / 100));
+}
+
+function highResUrl(photo: Photo) {
+  return photo.variants?.full ?? photo.src.replace(/w=\d+/, "w=1800");
+}
+
 function Lightbox({
   photo,
   lang,
@@ -170,12 +191,133 @@ function Lightbox({
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [imageQuality, setImageQuality] = useState<ImageQuality>("full");
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState<ViewerOffset>({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startOffset: ViewerOffset;
+  } | null>(null);
+
+  useEffect(() => {
+    setImageQuality("full");
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    setDragging(false);
+    setPasscode("");
+    setError(null);
+    dragRef.current = null;
+  }, [photo?.id]);
+
+  useEffect(() => {
+    if (!photo) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") {
+        onClose();
+      } else if (event.key === "ArrowLeft") {
+        onPrev();
+      } else if (event.key === "ArrowRight") {
+        onNext();
+      } else if (event.key === "+" || event.key === "=") {
+        setScale((value) => clampZoom(value + 0.25));
+      } else if (event.key === "-") {
+        setScale((value) => {
+          const next = clampZoom(value - 0.25);
+          if (next === minZoom) setOffset({ x: 0, y: 0 });
+          return next;
+        });
+      } else if (event.key === "0") {
+        setScale(1);
+        setOffset({ x: 0, y: 0 });
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, onNext, onPrev, photo]);
+
   if (!photo) return null;
 
   const locked = photo.privacy === "locked" && !unlocked;
   const privatePhoto = photo.privacy === "private";
   const canAccessOriginal = !privatePhoto && !locked;
+  const fullUrl = highResUrl(photo);
   const originalUrl = photo.variants?.original;
+  const hasOriginal = canAccessOriginal && Boolean(originalUrl);
+  const showingOriginal = imageQuality === "original" && hasOriginal;
+  const imageUrl = showingOriginal && originalUrl ? originalUrl : fullUrl;
+
+  const resetView = () => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    setDragging(false);
+    dragRef.current = null;
+  };
+
+  const zoomBy = (delta: number) => {
+    setScale((value) => {
+      const next = clampZoom(value + delta);
+      if (next === minZoom) setOffset({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const switchQuality = () => {
+    if (!hasOriginal) return;
+    setImageQuality((value) => value === "original" ? "full" : "original");
+    resetView();
+  };
+
+  const onStageWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    event.preventDefault();
+    zoomBy(event.deltaY > 0 ? -0.2 : 0.2);
+  };
+
+  const onStageDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (scale > minZoom) {
+      resetView();
+    } else {
+      setScale(2.25);
+    }
+  };
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (scale <= minZoom) return;
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startOffset: offset,
+    };
+    setDragging(true);
+  };
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.stopPropagation();
+    setOffset({
+      x: drag.startOffset.x + event.clientX - drag.startX,
+      y: drag.startOffset.y + event.clientY - drag.startY,
+    });
+  };
+
+  const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId === event.pointerId) {
+      event.stopPropagation();
+      dragRef.current = null;
+      setDragging(false);
+    }
+  };
 
   const unlock = async () => {
     const result = await api.unlockPhoto(photo.id, passcode);
@@ -212,34 +354,57 @@ function Lightbox({
     }
   };
 
-  const viewOriginal = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (!originalUrl) return;
-    window.open(originalUrl, "_blank", "noopener,noreferrer");
-  };
-
   return (
     <div className="lightbox" onClick={onClose}>
       <button className="icon-button close" onClick={onClose} aria-label={t.close as string}><CloseIcon /></button>
-      {canAccessOriginal && originalUrl && (
+      {!privatePhoto && !locked && (
         <div className="lightbox-actions" onClick={(event) => event.stopPropagation()}>
           <button
             className="icon-button"
-            onClick={viewOriginal}
-            aria-label={t.viewOriginal as string}
-            title={t.viewOriginal as string}
+            onClick={() => zoomBy(-0.25)}
+            aria-label={t.zoomOut as string}
+            title={t.zoomOut as string}
+            disabled={scale <= minZoom}
           >
-            <ExternalLinkIcon size={18} />
+            <ZoomOutIcon size={18} />
           </button>
           <button
             className="icon-button"
-            onClick={(event) => void download(event)}
-            aria-label={t.download as string}
-            title={t.download as string}
-            disabled={downloading}
+            onClick={resetView}
+            aria-label={t.fitToScreen as string}
+            title={t.fitToScreen as string}
           >
-            <DownloadIcon size={18} />
+            <FitIcon size={18} />
           </button>
+          <button
+            className="icon-button"
+            onClick={() => zoomBy(0.25)}
+            aria-label={t.zoomIn as string}
+            title={t.zoomIn as string}
+            disabled={scale >= maxZoom}
+          >
+            <ZoomInIcon size={18} />
+          </button>
+          <button
+            className={`viewer-quality${showingOriginal ? " active" : ""}`}
+            onClick={switchQuality}
+            aria-label={showingOriginal ? t.viewFull as string : t.viewOriginal as string}
+            title={showingOriginal ? t.viewFull as string : t.viewOriginal as string}
+            disabled={!hasOriginal}
+          >
+            {showingOriginal ? (lang === "zh" ? "高清" : "Full") : (lang === "zh" ? "原图" : "Original")}
+          </button>
+          {hasOriginal && (
+            <button
+              className="icon-button"
+              onClick={(event) => void download(event)}
+              aria-label={t.download as string}
+              title={t.download as string}
+              disabled={downloading}
+            >
+              <DownloadIcon size={18} />
+            </button>
+          )}
         </div>
       )}
       <button className="icon-button prev" onClick={(event) => { event.stopPropagation(); onPrev(); }} aria-label={t.prev as string}><ArrowIcon direction="left" /></button>
@@ -257,22 +422,36 @@ function Lightbox({
             {error && <span className="form-error">{error}</span>}
           </div>
         ) : (
-          <img
-            // key 让切 prev/next 时 React remount img，重放 CSS 入场动画
-            key={photo.id}
-            className="lightbox-image"
-            src={photo.variants?.full ?? photo.src.replace(/w=\d+/, "w=1800")}
-            alt={photo.title[lang]}
-            decoding="async"
-            fetchPriority="high"
-          />
+          <div
+            className={`lightbox-stage${scale > minZoom ? " zoomed" : ""}${dragging ? " dragging" : ""}`}
+            onWheel={onStageWheel}
+            onDoubleClick={onStageDoubleClick}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerEnd}
+            onPointerCancel={onPointerEnd}
+          >
+            <img
+              // key 让切 prev/next 或切清晰度时 React remount img，重放 CSS 入场动画
+              key={`${photo.id}-${imageQuality}`}
+              className="lightbox-image"
+              src={imageUrl}
+              alt={photo.title[lang]}
+              decoding="async"
+              fetchPriority="high"
+              draggable={false}
+              style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}
+            />
+          </div>
         )}
         <div className="lightbox-caption">
           <div>
             <strong>{photo.title[lang]}</strong>
             <span>{photo.loc[lang]} · {photo.date}</span>
           </div>
-          <span>{categories.find((item) => item.key === photo.cat)?.[lang]}</span>
+          <span>
+            {categories.find((item) => item.key === photo.cat)?.[lang]} · {Math.round(scale * 100)}%
+          </span>
         </div>
       </div>
     </div>
