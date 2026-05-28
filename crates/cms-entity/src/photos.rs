@@ -15,8 +15,10 @@ pub struct Model {
     pub primary_asset_id: i64,
     #[sea_orm(column_type = "Text")]
     pub privacy: String,
+    /// Locked 照片的明文口令（M2-1 migration 后由 passcode_hash 改名）。
+    /// 不是用户密码，是「分享给朋友的小钥匙」，admin 可见明文以便重新分发。
     #[sea_orm(column_type = "Text", nullable)]
-    pub passcode_hash: Option<String>,
+    pub passcode: Option<String>,
     #[sea_orm(column_type = "Text")]
     pub taken_at_label: String,
     pub taken_at_date: Option<Date>,

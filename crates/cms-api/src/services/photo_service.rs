@@ -1,9 +1,5 @@
 use std::{collections::HashSet, str::FromStr};
 
-use argon2::{
-    Argon2, PasswordHasher, PasswordVerifier,
-    password_hash::{PasswordHash, SaltString, rand_core::OsRng},
-};
 use cms_domain::Privacy;
 use cms_entity::{categories, media_assets, media_variants, tags};
 use fred::interfaces::KeysInterface;
@@ -53,7 +49,7 @@ pub async fn list_public(state: &AppState, query: PhotoQuery) -> AppResult<Vec<P
     let rows = photo_repo::list_public(&state.db, category_filter(&query))
         .await
         .map_err(db_err)?;
-    let photos = assemble_list(state, rows).await?;
+    let photos = assemble_list(state, rows, DtoScope::Public).await?;
     cache::set(&state.redis, &cache_key, &photos, 60).await;
     Ok(photos)
 }
@@ -71,7 +67,7 @@ pub async fn list_admin(state: &AppState, query: PhotoListQuery) -> AppResult<Ph
     )
     .await
     .map_err(db_err)?;
-    let items = assemble_list(state, rows).await?;
+    let items = assemble_list(state, rows, DtoScope::Admin).await?;
     Ok(PhotoListResp {
         items,
         total,
@@ -88,7 +84,7 @@ pub async fn list_admin_all(state: &AppState, query: PhotoQuery) -> AppResult<Ve
     let rows = photo_repo::list_admin(&state.db, category_filter(&query))
         .await
         .map_err(db_err)?;
-    assemble_list(state, rows).await
+    assemble_list(state, rows, DtoScope::Admin).await
 }
 
 pub async fn categories(state: &AppState) -> AppResult<Vec<CategoryDto>> {
@@ -127,7 +123,7 @@ pub async fn create(state: &AppState, req: PhotoReq) -> AppResult<PhotoDto> {
     let input = new_photo_from_req(slug, req, None);
     let id = photo_repo::create(&state.db, input).await.map_err(db_err)?;
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
-    find_dto(state, id).await
+    find_dto(state, id, DtoScope::Admin).await
 }
 
 pub async fn update(state: &AppState, id: i64, req: PhotoReq) -> AppResult<PhotoDto> {
@@ -138,7 +134,7 @@ pub async fn update(state: &AppState, id: i64, req: PhotoReq) -> AppResult<Photo
         .ok_or(AppError::NotFound)?;
     let slug = update_slug(state, id, &req, &current.photo.slug).await?;
     let new_privacy = req.privacy;
-    let input = new_photo_from_req(slug, req, current.photo.passcode_hash);
+    let input = new_photo_from_req(slug, req, current.photo.passcode);
     photo_repo::update(&state.db, id, input)
         .await
         .map_err(db_err)?;
@@ -147,15 +143,15 @@ pub async fn update(state: &AppState, id: i64, req: PhotoReq) -> AppResult<Photo
         tracing::warn!(error = ?error, photo_id = id, "sync variants ACL after update failed");
     }
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
-    find_dto(state, id).await
+    find_dto(state, id, DtoScope::Admin).await
 }
 
 pub async fn update_privacy(state: &AppState, id: i64, req: PrivacyReq) -> AppResult<PhotoDto> {
-    let passcode_hash = match req.privacy {
-        Privacy::Locked => Some(argon2_hash("1234")?),
+    let passcode = match req.privacy {
+        Privacy::Locked => Some("1234".to_owned()),
         Privacy::Public | Privacy::Private => None,
     };
-    photo_repo::update_privacy(&state.db, id, req.privacy, passcode_hash)
+    photo_repo::update_privacy(&state.db, id, req.privacy, passcode)
         .await
         .map_err(db_err)?;
     // 同步把这张照片所有 variants 在 OSS 的 ACL 翻一下
@@ -163,7 +159,7 @@ pub async fn update_privacy(state: &AppState, id: i64, req: PrivacyReq) -> AppRe
         tracing::warn!(error = ?error, photo_id = id, "sync variants ACL after update_privacy failed");
     }
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
-    find_dto(state, id).await
+    find_dto(state, id, DtoScope::Admin).await
 }
 
 pub async fn delete(state: &AppState, id: i64) -> AppResult<()> {
@@ -193,13 +189,13 @@ pub async fn bulk_update_privacy(state: &AppState, req: BulkPrivacyReq) -> AppRe
         .await
         .map_err(db_err)?;
     let skipped = skipped_ids(&req.ids, &existing);
-    let passcode_hash = if matches!(req.privacy, Privacy::Locked) {
-        Some(argon2_hash("1234")?)
+    let passcode = if matches!(req.privacy, Privacy::Locked) {
+        Some("1234".to_owned())
     } else {
         None
     };
     let affected =
-        photo_repo::update_privacy_many(&state.db, &existing, req.privacy, passcode_hash)
+        photo_repo::update_privacy_many(&state.db, &existing, req.privacy, passcode)
             .await
             .map_err(db_err)?;
     // 批量翻 ACL（容错：单条失败不打断整批）
@@ -279,14 +275,12 @@ pub async fn unlock(state: &AppState, id: i64, req: UnlockReq) -> AppResult<Unlo
         return Ok(UnlockResp { unlocked: true });
     }
 
-    let hash = photo
+    let stored = photo
         .photo
-        .passcode_hash
-        .ok_or(AppError::Internal("locked photo missing passcode_hash"))?;
-    let parsed = PasswordHash::new(&hash).map_err(|_| AppError::Internal("hash parse"))?;
-    let unlocked = Argon2::default()
-        .verify_password(req.passcode.as_bytes(), &parsed)
-        .is_ok();
+        .passcode
+        .ok_or(AppError::Internal("locked photo missing passcode"))?;
+    // 明文等长比较；passcode 是分享口令不是登录密码，可接受简单 string eq
+    let unlocked = stored == req.passcode;
     Ok(UnlockResp { unlocked })
 }
 
@@ -299,8 +293,8 @@ pub async fn seed_demo_photos(state: &AppState) -> AppResult<SeedReport> {
     };
 
     for (idx, photo) in DEMO_PHOTOS.iter().enumerate() {
-        let passcode_hash = if photo.privacy == Privacy::Locked {
-            Some(argon2_hash("1234")?)
+        let passcode = if photo.privacy == Privacy::Locked {
+            Some("1234".to_owned())
         } else {
             None
         };
@@ -310,7 +304,7 @@ pub async fn seed_demo_photos(state: &AppState) -> AppResult<SeedReport> {
             src_url: photo.src.to_owned(),
             mime_type: "image/jpeg".to_owned(),
             privacy: photo.privacy,
-            passcode_hash,
+            passcode,
             taken_at_label: photo.date.to_owned(),
             title_zh: photo.title_zh.to_owned(),
             title_en: photo.title_en.to_owned(),
@@ -334,11 +328,21 @@ pub async fn seed_demo_photos(state: &AppState) -> AppResult<SeedReport> {
     Ok(report)
 }
 
+/// Build DTO 区分作用域：
+/// - `DtoScope::Public`：passcode 字段不下发（管理隐私）
+/// - `DtoScope::Admin`：包含 passcode 明文，便于在后台显示
+#[derive(Clone, Copy)]
+pub enum DtoScope {
+    Public,
+    Admin,
+}
+
 async fn build_dto(
     state: &AppState,
     full: PhotoFull,
     variants: &[media_variants::Model],
     tags: Vec<tags::Model>,
+    scope: DtoScope,
 ) -> AppResult<PhotoDto> {
     let privacy = Privacy::from_str(&full.photo.privacy).unwrap_or(Privacy::Private);
     let urls = build_variants_urls(state, &full.asset, variants, privacy).await?;
@@ -349,6 +353,10 @@ async fn build_dto(
         .or_else(|| urls.thumb.clone())
         .or_else(|| urls.original.clone())
         .unwrap_or_default();
+    let passcode = match scope {
+        DtoScope::Admin => full.photo.passcode.clone(),
+        DtoScope::Public => None,
+    };
     Ok(PhotoDto {
         id: full.photo.id,
         slug: full.photo.slug.clone(),
@@ -368,6 +376,7 @@ async fn build_dto(
         privacy,
         tags: tags.into_iter().map(tag_summary).collect(),
         variants: urls,
+        passcode,
     })
 }
 
@@ -427,7 +436,7 @@ async fn variant_url(state: &AppState, key: &str, privacy: Privacy) -> AppResult
     }
 }
 
-async fn find_dto(state: &AppState, id: i64) -> AppResult<PhotoDto> {
+async fn find_dto(state: &AppState, id: i64, scope: DtoScope) -> AppResult<PhotoDto> {
     let row = photo_repo::find_by_id(&state.db, id)
         .await
         .map_err(db_err)?;
@@ -443,10 +452,14 @@ async fn find_dto(state: &AppState, id: i64) -> AppResult<PhotoDto> {
         .await
         .map_err(db_err)?;
     let tags = tags_map.remove(&row.photo.id).unwrap_or_default();
-    build_dto(state, row, variants, tags).await
+    build_dto(state, row, variants, tags, scope).await
 }
 
-async fn assemble_list(state: &AppState, rows: Vec<PhotoFull>) -> AppResult<Vec<PhotoDto>> {
+async fn assemble_list(
+    state: &AppState,
+    rows: Vec<PhotoFull>,
+    scope: DtoScope,
+) -> AppResult<Vec<PhotoDto>> {
     let asset_ids: Vec<i64> = rows.iter().map(|row| row.asset.id).collect();
     let photo_ids: Vec<i64> = rows.iter().map(|row| row.photo.id).collect();
     let variants_map = media_repo::find_variants_for_assets(&state.db, &asset_ids)
@@ -463,7 +476,7 @@ async fn assemble_list(state: &AppState, rows: Vec<PhotoFull>) -> AppResult<Vec<
             .map(Vec::as_slice)
             .unwrap_or(&[]);
         let tags = tags_map.get(&row.photo.id).cloned().unwrap_or_default();
-        out.push(build_dto(state, row, variants, tags).await?);
+        out.push(build_dto(state, row, variants, tags, scope).await?);
     }
     Ok(out)
 }
@@ -570,18 +583,36 @@ fn skipped_ids(requested: &[i64], existing: &[i64]) -> Vec<i64> {
         .collect()
 }
 
-fn new_photo_from_req(slug: String, req: PhotoReq, passcode_hash: Option<String>) -> NewPhoto {
+/// 构造 NewPhoto。passcode 规则：
+/// - privacy != Locked：强制清空（公开/私密照片不需要口令）
+/// - privacy == Locked：
+///   · req.passcode 非空 → 用它（前端传新口令）
+///   · req.passcode 为 None 或空字符串 → fallback 用 `prev_passcode`（编辑时不动旧口令）
+///   · 都没有 → 默认 "1234"（首次设 Locked 给个兜底，避免空口令）
+fn new_photo_from_req(slug: String, req: PhotoReq, prev_passcode: Option<String>) -> NewPhoto {
     let caption_zh = req.caption.as_ref().map(|i18n| i18n.zh.clone());
     let caption_en = req.caption.as_ref().map(|i18n| i18n.en.clone());
     let alt_text_zh = req.alt_text.as_ref().map(|i18n| i18n.zh.clone());
     let alt_text_en = req.alt_text.as_ref().map(|i18n| i18n.en.clone());
+
+    let passcode = match req.privacy {
+        Privacy::Locked => req
+            .passcode
+            .as_ref()
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty())
+            .or(prev_passcode)
+            .or_else(|| Some("1234".to_owned())),
+        Privacy::Public | Privacy::Private => None,
+    };
+
     NewPhoto {
         slug,
         category_slug: req.cat,
         src_url: req.src,
         mime_type: "image/jpeg".to_owned(),
         privacy: req.privacy,
-        passcode_hash,
+        passcode,
         taken_at_label: req.date,
         title_zh: req.title.zh,
         title_en: req.title.en,
@@ -696,14 +727,6 @@ fn validate(req: &PhotoReq) -> AppResult<()> {
         return Err(AppError::Validation("unknown category".into()));
     }
     Ok(())
-}
-
-fn argon2_hash(passcode: &str) -> AppResult<String> {
-    let salt = SaltString::generate(&mut OsRng);
-    Argon2::default()
-        .hash_password(passcode.as_bytes(), &salt)
-        .map(|hash| hash.to_string())
-        .map_err(|_| AppError::Internal("argon2 hash failed"))
 }
 
 #[derive(Clone, Copy)]

@@ -42,6 +42,10 @@ pub struct PhotoDto {
     /// 各尺寸 URL：public 照片是永久 URL，locked/private 是 1h presigned。
     /// 缺哪个 variant 就该字段空（worker 尚未跑完时 medium/full/webp 可能为 None）。
     pub variants: PhotoVariants,
+    /// Locked 照片的明文口令。**仅 admin 端响应**包含此字段；
+    /// public 端响应始终 None（被 skip_serializing_if 隐藏）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub passcode: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -80,6 +84,9 @@ pub struct PhotoReq {
     pub alt_text: Option<I18nText>,
     #[serde(default)]
     pub tag_ids: Vec<i64>,
+    /// Locked 照片的明文口令；其它隐私下忽略。空字符串 = 用旧值（编辑场景）。
+    #[serde(default)]
+    pub passcode: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

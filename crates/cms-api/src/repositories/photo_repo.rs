@@ -30,7 +30,7 @@ pub struct NewPhoto {
     pub src_url: String,
     pub mime_type: String,
     pub privacy: Privacy,
-    pub passcode_hash: Option<String>,
+    pub passcode: Option<String>,
     pub taken_at_label: String,
     pub title_zh: String,
     pub title_en: String,
@@ -50,7 +50,7 @@ struct PhotoJoinedRow {
     category_id: Option<i64>,
     primary_asset_id: i64,
     privacy: String,
-    passcode_hash: Option<String>,
+    passcode: Option<String>,
     taken_at_label: String,
     taken_at_date: Option<chrono::NaiveDate>,
     uploaded_by: Option<i64>,
@@ -233,7 +233,7 @@ pub async fn create(db: &DatabaseConnection, input: NewPhoto) -> Result<i64, DbE
         category_id: Set(Some(category_id)),
         primary_asset_id: Set(asset.id),
         privacy: Set(input.privacy.as_str().to_owned()),
-        passcode_hash: Set(input.passcode_hash.clone()),
+        passcode: Set(input.passcode.clone()),
         taken_at_label: Set(input.taken_at_label.clone()),
         taken_at_date: Set(None),
         sort_order: Set(0),
@@ -257,7 +257,7 @@ pub async fn update(db: &DatabaseConnection, id: i64, input: NewPhoto) -> Result
         category_id: Set(Some(category_id)),
         primary_asset_id: Set(asset.id),
         privacy: Set(input.privacy.as_str().to_owned()),
-        passcode_hash: Set(input.passcode_hash.clone()),
+        passcode: Set(input.passcode.clone()),
         taken_at_label: Set(input.taken_at_label.clone()),
         taken_at_date: Set(None),
         ..Default::default()
@@ -277,12 +277,12 @@ pub async fn update_privacy(
     db: &DatabaseConnection,
     id: i64,
     p: Privacy,
-    passcode_hash: Option<String>,
+    passcode: Option<String>,
 ) -> Result<(), DbErr> {
     photos::ActiveModel {
         id: Set(id),
         privacy: Set(p.as_str().to_owned()),
-        passcode_hash: Set(passcode_hash),
+        passcode: Set(passcode),
         ..Default::default()
     }
     .update(db)
@@ -342,14 +342,14 @@ pub async fn update_privacy_many(
     db: &DatabaseConnection,
     ids: &[i64],
     privacy: Privacy,
-    passcode_hash: Option<String>,
+    passcode: Option<String>,
 ) -> Result<i64, DbErr> {
     if ids.is_empty() {
         return Ok(0);
     }
     let result = photos::Entity::update_many()
         .col_expr(photos::Column::Privacy, Expr::value(privacy.as_str()))
-        .col_expr(photos::Column::PasscodeHash, Expr::value(passcode_hash))
+        .col_expr(photos::Column::Passcode, Expr::value(passcode))
         .filter(photos::Column::Id.is_in(ids.to_vec()))
         .exec(db)
         .await?;
@@ -430,7 +430,7 @@ SELECT
     p.category_id,
     p.primary_asset_id,
     p.privacy,
-    p.passcode_hash,
+    p.passcode,
     p.taken_at_label,
     p.taken_at_date,
     p.uploaded_by,
@@ -463,7 +463,7 @@ INNER JOIN categories c ON c.id = p.category_id
 LEFT JOIN photo_translations pt ON pt.photo_id = p.id
 {where_clause}
 GROUP BY
-    p.id, p.slug, p.category_id, p.primary_asset_id, p.privacy, p.passcode_hash,
+    p.id, p.slug, p.category_id, p.primary_asset_id, p.privacy, p.passcode,
     p.taken_at_label, p.taken_at_date, p.uploaded_by, p.sort_order, p.published_at,
     p.created_at, p.updated_at,
     ma.id, ma.storage_key, ma.mime_type, ma.width, ma.height, ma.byte_size,
@@ -618,7 +618,7 @@ impl From<PhotoJoinedRow> for PhotoFull {
                 category_id: row.category_id,
                 primary_asset_id: row.primary_asset_id,
                 privacy: row.privacy,
-                passcode_hash: row.passcode_hash,
+                passcode: row.passcode,
                 taken_at_label: row.taken_at_label,
                 taken_at_date: row.taken_at_date,
                 uploaded_by: row.uploaded_by,
