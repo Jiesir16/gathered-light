@@ -197,12 +197,12 @@ function TypewriterText({ lines }: { lines: string[] }) {
     const atEnd = charCount >= currentChars.length;
     const atStart = charCount <= 0;
     const delay = deleting
-      ? 34
+      ? 54
       : atEnd
-        ? 1700
+        ? 2200
         : atStart && lineIndex > 0
-          ? 260
-          : 68;
+          ? 420
+          : 96;
 
     const timer = window.setTimeout(() => {
       if (!deleting && atEnd) {
