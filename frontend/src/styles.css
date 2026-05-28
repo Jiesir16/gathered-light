@@ -52,6 +52,30 @@ a {
   background: var(--bg);
 }
 
+/* 前台首屏淡入：从透明 + 向下 4px 抬起来；backwards 让动画在 delay 期间也生效 */
+.site-shell {
+  animation: pageIn 380ms ease 40ms backwards;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 尊重用户的减少动效偏好（系统设置） */
+@media (prefers-reduced-motion: reduce) {
+  .site-shell,
+  .lightbox,
+  .lightbox-inner,
+  .lightbox-image {
+    animation: none !important;
+  }
+  .photo-media img {
+    opacity: 1 !important;
+    transition: none !important;
+  }
+}
+
 .topbar,
 .admin-topbar {
   position: sticky;
@@ -249,7 +273,13 @@ a {
   display: block;
   width: 100%;
   height: auto;
-  transition: transform 420ms ease, filter 420ms ease;
+  /* 默认半透明：等 onLoad 把 data-loaded=true 后再淡入；transform/filter 保留 hover 用 */
+  opacity: 0;
+  transition: opacity 380ms ease, transform 420ms ease, filter 420ms ease;
+}
+
+.photo-media img[data-loaded="true"] {
+  opacity: 1;
 }
 
 .photo-card:hover img {
@@ -330,11 +360,15 @@ a {
   padding: 40px;
   background: rgba(12, 12, 14, 0.78);
   backdrop-filter: blur(18px);
+  /* 整个遮罩淡入（背景模糊从 0→18 的过渡视觉重，单跑 opacity 更稳） */
+  animation: overlayIn 200ms ease forwards;
 }
 
 .lightbox-inner {
   max-width: min(1100px, 92vw);
   color: white;
+  /* 内容卡片轻微缩放出现，给点空间感（贝塞尔曲线让结尾更柔） */
+  animation: panelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .lightbox-image {
@@ -343,6 +377,23 @@ a {
   max-height: 76vh;
   object-fit: contain;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+  /* 切 prev/next 时配合 React `key={photo.id}` remount 让动画重放 */
+  animation: lightboxImgIn 240ms ease forwards;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes lightboxImgIn {
+  from { opacity: 0; transform: scale(0.99); }
+  to   { opacity: 1; transform: none; }
 }
 
 .lightbox-caption {

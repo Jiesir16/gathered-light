@@ -104,7 +104,15 @@ function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: 
       <div className="photo-media">
         <picture>
           {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
-          <img src={jpgSrc} alt={photo.title[lang]} className={hidden ? "obscured" : ""} loading="lazy" decoding="async" />
+          <img
+            src={jpgSrc}
+            alt={photo.title[lang]}
+            className={hidden ? "obscured" : ""}
+            loading="lazy"
+            decoding="async"
+            // data-loaded 触发淡入；缓存命中也会 fire onLoad，所以无 flicker
+            onLoad={(event) => { event.currentTarget.dataset.loaded = "true"; }}
+          />
         </picture>
         {hidden && (
           <div className="photo-shield">
@@ -232,6 +240,8 @@ function Lightbox({
           </div>
         ) : (
           <img
+            // key 让切 prev/next 时 React remount img，重放 CSS 入场动画
+            key={photo.id}
             className="lightbox-image"
             src={photo.variants?.full ?? photo.src.replace(/w=\d+/, "w=1800")}
             alt={photo.title[lang]}
