@@ -1,18 +1,45 @@
+:root,
+:root[data-theme="warm"] {
+  /* admin 端有独立作用域 .admin-shell.sidebar 不受影响（仍是 Ghost 风白） */
+  --bg: #fbfaf7;
+  --panel: #f4f1ea;
+  --panel-2: #ffffff;
+  --fg: #1a1814;
+  --muted: #8a857d;
+  --muted-2: #5a554c;
+  --rule: #e8e3d8;
+  --accent: #3f5f4a;
+  --lightbox-bg: rgba(20, 18, 15, 0.82);
+}
+
+:root[data-theme="cool"] {
+  --bg: #ffffff;
+  --panel: #f7f7f8;
+  --panel-2: #ffffff;
+  --fg: #18181b;
+  --muted: #71717a;
+  --muted-2: #3f3f46;
+  --rule: #e4e4e7;
+  --accent: #18181b;
+  --lightbox-bg: rgba(10, 10, 12, 0.82);
+}
+
+:root[data-theme="bold"] {
+  --bg: #ffffff;
+  --panel: #f9f9f9;
+  --panel-2: #ffffff;
+  --fg: #121212;
+  --muted: #666666;
+  --muted-2: #2a2a2a;
+  --rule: #d8d8d8;
+  --accent: #b91c1c;
+  --lightbox-bg: rgba(0, 0, 0, 0.85);
+}
+
 :root {
-  /* 配色：warm editorial（暖中性 / 编辑感）
-   * 比纯白柔和，比浅米克制；中文衬线 + 慢节奏照片日记的语境下，
-   * 暖底 + 暖灰 + 深森林绿，比纯白更"高级"。
-   * admin 端有独立作用域 .admin-shell.sidebar 不受影响（仍是 Ghost 风白） */
-  --bg: #fbfaf7;          /* 微米黄宣纸感；不是奶油，是"纸"的颜色 */
-  --panel: #f4f1ea;       /* 卡片背景；带温度的米 */
-  --panel-2: #ffffff;     /* 留一个纯白给 hover / 高亮 */
-  --fg: #1a1814;          /* 暖近黑；纯黑在暖底上太硬，加一点棕底让眼睛舒服 */
-  --muted: #8a857d;       /* 次级文字；暖中性灰 */
-  --muted-2: #5a554c;     /* 正文级灰；够深但仍是暖调 */
-  --rule: #e8e3d8;        /* 暖边线；不是中性 #ec，是带米色调的 #e8 */
-  --accent: #3f5f4a;      /* 深森林绿；比 #5e7a64 沉一档，更稳 */
   color: var(--fg);
   background: var(--bg);
+  transition: background-color 240ms ease, color 240ms ease;
   font-family: "Noto Sans SC", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -414,8 +441,7 @@ a {
   display: grid;
   place-items: center;
   padding: 40px;
-  /* 暖深遮罩（跟 --fg 同色相），跟整站暖底气质统一；不用纯黑 */
-  background: rgba(20, 18, 15, 0.82);
+  background: var(--lightbox-bg);
   backdrop-filter: blur(18px);
   /* 整个遮罩淡入（背景模糊从 0→18 的过渡视觉重，单跑 opacity 更稳） */
   animation: overlayIn 200ms ease forwards;
