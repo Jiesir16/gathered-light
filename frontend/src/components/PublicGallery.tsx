@@ -19,6 +19,7 @@ export function PublicGallery() {
   const [category, setCategory] = useState("all");
   const [activeId, setActiveId] = useState<number | null>(null);
   const [unlocked, setUnlocked] = useState<Set<number>>(() => new Set());
+  const masonryRef = useRef<HTMLElement | null>(null);
 
   const filtered = useMemo(() => (
     category === "all" ? photos : photos.filter((photo) => photo.cat === category)
@@ -33,6 +34,72 @@ export function PublicGallery() {
       : (activeIndex + direction + filtered.length) % filtered.length;
     setActiveId(filtered[next].id);
   };
+
+  useEffect(() => {
+    const root = masonryRef.current;
+    if (!root) return;
+
+    const cards = Array.from(root.querySelectorAll<HTMLElement>(".photo-card"));
+    if (!cards.length) return;
+    const images = cards
+      .map((card) => card.querySelector("img"))
+      .filter((image): image is HTMLImageElement => Boolean(image));
+
+    cards.forEach((card) => {
+      card.classList.remove("is-visible");
+      card.style.setProperty("--reveal-delay", "0ms");
+    });
+
+    let layoutFrame = 0;
+    let revealFrame = 0;
+    let fallbackTimer = 0;
+    let didReveal = false;
+
+    const revealTopDown = () => {
+      if (didReveal) return;
+      didReveal = true;
+      window.clearTimeout(fallbackTimer);
+
+      layoutFrame = window.requestAnimationFrame(() => {
+        const topValues = cards.map((card) => card.offsetTop);
+        const minTop = Math.min(...topValues);
+
+        cards.forEach((card, index) => {
+          const delay = Math.min(760, Math.max(0, (topValues[index] - minTop) * 0.42));
+          card.style.setProperty("--reveal-delay", `${Math.round(delay)}ms`);
+        });
+
+        revealFrame = window.requestAnimationFrame(() => {
+          cards.forEach((card) => card.classList.add("is-visible"));
+        });
+      });
+    };
+
+    const revealAfterMeasurableLayout = () => {
+      if (cards.some((card) => card.getBoundingClientRect().height > 80)) {
+        revealTopDown();
+      }
+    };
+
+    images.forEach((image) => {
+      if (image.complete) return;
+      image.addEventListener("load", revealAfterMeasurableLayout, { once: true });
+      image.addEventListener("error", revealAfterMeasurableLayout, { once: true });
+    });
+
+    layoutFrame = window.requestAnimationFrame(revealAfterMeasurableLayout);
+    fallbackTimer = window.setTimeout(revealTopDown, 520);
+
+    return () => {
+      images.forEach((image) => {
+        image.removeEventListener("load", revealAfterMeasurableLayout);
+        image.removeEventListener("error", revealAfterMeasurableLayout);
+      });
+      window.clearTimeout(fallbackTimer);
+      window.cancelAnimationFrame(layoutFrame);
+      window.cancelAnimationFrame(revealFrame);
+    };
+  }, [category, filtered]);
 
   return (
     <div className="site-shell">
@@ -74,9 +141,8 @@ export function PublicGallery() {
 
         {loading && <div className="state-line">Loading...</div>}
         {error && <div className="state-line error">{error}</div>}
-        {/* key={category} 让切类别时整个 masonry remount，
-            触发 .photo-card 的 cardIn 动画 + 重新跑图片 onLoad 淡入 */}
-        <section className="masonry" key={category}>
+        {/* key={category} 让切类别时整个 masonry remount，重新跑图片 onLoad 淡入。 */}
+        <section className="masonry" key={category} ref={masonryRef}>
           {filtered.map((photo) => (
             <PhotoCard key={photo.id} photo={photo} unlocked={unlocked.has(photo.id)} onOpen={() => setActiveId(photo.id)} lang={lang} />
           ))}
