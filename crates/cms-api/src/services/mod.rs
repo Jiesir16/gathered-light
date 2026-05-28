@@ -17,5 +17,6 @@ pub mod category_service;
 pub mod dashboard_service;
 pub mod media_service;
 pub mod photo_service;
+pub mod settings_service;
 pub mod tag_service;
 pub mod user_service;

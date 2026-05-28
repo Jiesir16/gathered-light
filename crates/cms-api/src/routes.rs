@@ -17,7 +17,7 @@ use tower_http::{
 use crate::bootstrap::AppState;
 use crate::handlers::{
     auth_handler, category_handler, dashboard_handler, health_handler, media_handler,
-    photo_handler, tag_handler, user_handler,
+    photo_handler, settings_handler, tag_handler, user_handler,
 };
 use crate::middleware::auth::jwt_guard;
 
@@ -29,6 +29,7 @@ pub fn build(state: AppState) -> Router {
     let public_api = Router::new()
         .route("/auth/login", post(auth_handler::login))
         .route("/auth/refresh", post(auth_handler::refresh))
+        .route("/settings", get(settings_handler::get_public))
         .route("/categories", get(category_handler::list))
         .route("/tags", get(tag_handler::list_public))
         .route("/photos", get(photo_handler::list_public))
@@ -39,6 +40,10 @@ pub fn build(state: AppState) -> Router {
         .route("/auth/logout-all", post(auth_handler::logout_all))
         .route("/auth/me", get(auth_handler::me))
         .route("/admin/dashboard", get(dashboard_handler::get_overview))
+        .route(
+            "/admin/settings/theme",
+            patch(settings_handler::update_theme),
+        )
         .route("/admin/media/presign", post(media_handler::presign))
         .route("/admin/media/complete", post(media_handler::complete))
         .route(

@@ -16,5 +16,6 @@ pub mod category_dto;
 pub mod dashboard_dto;
 pub mod media_dto;
 pub mod photo_dto;
+pub mod settings_dto;
 pub mod tag_dto;
 pub mod user_dto;

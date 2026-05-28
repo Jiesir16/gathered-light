@@ -11,5 +11,6 @@ pub mod dashboard_handler;
 pub mod health_handler;
 pub mod media_handler;
 pub mod photo_handler;
+pub mod settings_handler;
 pub mod tag_handler;
 pub mod user_handler;
