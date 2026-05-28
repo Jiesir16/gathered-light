@@ -118,7 +118,10 @@ export const i18n = {
     uploading: "上传中...",
     uploadDone: "上传完成",
     uploadFailed: "上传失败",
-    chooseFile: "选择文件"
+    chooseFile: "选择文件",
+    viewOriginal: "查看原图",
+    download: "保存原图",
+    downloading: "下载中..."
   },
   en: {
     siteName: "Gathered Light",
@@ -230,7 +233,10 @@ export const i18n = {
     uploading: "Uploading...",
     uploadDone: "Uploaded",
     uploadFailed: "Upload failed",
-    chooseFile: "Choose file"
+    chooseFile: "Choose file",
+    viewOriginal: "View original",
+    download: "Save",
+    downloading: "Downloading..."
   }
 } satisfies Record<Lang, Record<string, unknown>>;
 

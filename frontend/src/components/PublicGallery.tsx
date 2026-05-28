@@ -4,7 +4,7 @@ import { categories } from "../i18n";
 import { useLang } from "../hooks/useLang";
 import { usePhotos } from "../hooks/usePhotos";
 import type { Photo } from "../types";
-import { ArrowIcon, CloseIcon, EyeOffIcon, LockIcon } from "./Icons";
+import { ArrowIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeOffIcon, LockIcon } from "./Icons";
 
 export function PublicGallery() {
   const { lang, setLang, t } = useLang();
@@ -143,10 +143,14 @@ function Lightbox({
   const { t } = useLang();
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   if (!photo) return null;
 
   const locked = photo.privacy === "locked" && !unlocked;
   const privatePhoto = photo.privacy === "private";
+  const canAccessOriginal = !privatePhoto && !locked;
+  const originalUrl = photo.variants?.original;
+
   const unlock = async () => {
     const result = await api.unlockPhoto(photo.id, passcode);
     if (result.unlocked) {
@@ -157,9 +161,61 @@ function Lightbox({
     }
   };
 
+  // 「保存原图」：fetch + blob + 触发下载（兼容跨域 + Content-Disposition 缺失场景）
+  const download = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!originalUrl || downloading) return;
+    setDownloading(true);
+    try {
+      const resp = await fetch(originalUrl);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      // 文件名取 slug + 从 URL path 末段提取的扩展名
+      const ext = (originalUrl.match(/\.([a-zA-Z0-9]{2,5})(?:\?|$)/)?.[1] ?? "jpg").toLowerCase();
+      a.download = `${photo.slug || photo.id}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error("download failed", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const viewOriginal = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!originalUrl) return;
+    window.open(originalUrl, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="lightbox" onClick={onClose}>
       <button className="icon-button close" onClick={onClose} aria-label={t.close as string}><CloseIcon /></button>
+      {canAccessOriginal && originalUrl && (
+        <div className="lightbox-actions" onClick={(event) => event.stopPropagation()}>
+          <button
+            className="icon-button"
+            onClick={viewOriginal}
+            aria-label={t.viewOriginal as string}
+            title={t.viewOriginal as string}
+          >
+            <ExternalLinkIcon size={18} />
+          </button>
+          <button
+            className="icon-button"
+            onClick={(event) => void download(event)}
+            aria-label={t.download as string}
+            title={t.download as string}
+            disabled={downloading}
+          >
+            <DownloadIcon size={18} />
+          </button>
+        </div>
+      )}
       <button className="icon-button prev" onClick={(event) => { event.stopPropagation(); onPrev(); }} aria-label={t.prev as string}><ArrowIcon direction="left" /></button>
       <button className="icon-button next" onClick={(event) => { event.stopPropagation(); onNext(); }} aria-label={t.next as string}><ArrowIcon /></button>
       <div className="lightbox-inner" onClick={(event) => event.stopPropagation()}>
