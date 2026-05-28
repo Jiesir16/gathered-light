@@ -6,5 +6,6 @@ pub use super::media_variants::Entity as MediaVariants;
 pub use super::photo_tags::Entity as PhotoTags;
 pub use super::photo_translations::Entity as PhotoTranslations;
 pub use super::photos::Entity as Photos;
+pub use super::site_settings::Entity as SiteSettings;
 pub use super::tags::Entity as Tags;
 pub use super::users::Entity as Users;

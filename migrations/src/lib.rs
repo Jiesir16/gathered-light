@@ -12,6 +12,7 @@ pub use sea_orm_migration::prelude::*;
 
 mod m20260506_000001_init;
 mod m20260528_000002_passcode_plain;
+mod m20260529_000003_site_settings;
 
 pub struct Migrator;
 
@@ -21,6 +22,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20260506_000001_init::Migration),
             Box::new(m20260528_000002_passcode_plain::Migration),
+            Box::new(m20260529_000003_site_settings::Migration),
         ]
     }
 }

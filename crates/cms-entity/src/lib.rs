@@ -8,5 +8,6 @@ pub mod media_variants;
 pub mod photo_tags;
 pub mod photo_translations;
 pub mod photos;
+pub mod site_settings;
 pub mod tags;
 pub mod users;
