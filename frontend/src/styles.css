@@ -133,6 +133,9 @@ a {
     opacity: 1 !important;
     transition: none !important;
   }
+  .typewriter-caret {
+    animation: none !important;
+  }
 }
 
 .topbar,
@@ -297,6 +300,20 @@ a {
   line-height: 1.9;
 }
 
+.typewriter-copy {
+  min-height: 58px;
+}
+
+.typewriter-caret {
+  display: inline-block;
+  width: 1px;
+  height: 1.1em;
+  margin-left: 4px;
+  background: var(--accent);
+  transform: translateY(0.18em);
+  animation: typewriterCaret 900ms steps(2, start) infinite;
+}
+
 .intro-meta {
   display: flex;
   gap: 24px;
@@ -335,6 +352,10 @@ a {
 @keyframes introHeadlineIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: none; }
+}
+
+@keyframes typewriterCaret {
+  50% { opacity: 0; }
 }
 
 .masonry {

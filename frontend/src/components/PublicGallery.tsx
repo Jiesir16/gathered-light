@@ -24,6 +24,7 @@ export function PublicGallery() {
   const filtered = useMemo(() => (
     category === "all" ? photos : photos.filter((photo) => photo.cat === category)
   ), [category, photos]);
+  const introLines = t.introLines;
   const active = filtered.find((photo) => photo.id === activeId) ?? null;
   const activeIndex = filtered.findIndex((photo) => photo.id === activeId);
 
@@ -131,7 +132,7 @@ export function PublicGallery() {
             <h1>{t.headline}</h1>
           </div>
           <aside>
-            <p>{t.intro}</p>
+            <TypewriterText lines={introLines} />
             <div className="intro-meta">
               <span>{t.frames(photos.length)}</span>
               <span>{t.updated}</span>
@@ -166,6 +167,66 @@ export function PublicGallery() {
         onUnlocked={(id) => setUnlocked((prev) => new Set(prev).add(id))}
       />
     </div>
+  );
+}
+
+function TypewriterText({ lines }: { lines: string[] }) {
+  const [lineIndex, setLineIndex] = useState(0);
+  const [charCount, setCharCount] = useState(0);
+  const [deleting, setDeleting] = useState(false);
+  const lineSignature = lines.join("\n");
+  const currentLine = lines[lineIndex] ?? "";
+  const currentChars = Array.from(currentLine);
+
+  useEffect(() => {
+    setLineIndex(0);
+    setCharCount(0);
+    setDeleting(false);
+  }, [lineSignature]);
+
+  useEffect(() => {
+    if (!lines.length) return;
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setLineIndex(0);
+      setCharCount(Array.from(lines[0]).length);
+      setDeleting(false);
+      return;
+    }
+
+    const atEnd = charCount >= currentChars.length;
+    const atStart = charCount <= 0;
+    const delay = deleting
+      ? 34
+      : atEnd
+        ? 1700
+        : atStart && lineIndex > 0
+          ? 260
+          : 68;
+
+    const timer = window.setTimeout(() => {
+      if (!deleting && atEnd) {
+        setDeleting(true);
+        return;
+      }
+
+      if (deleting && atStart) {
+        setDeleting(false);
+        setLineIndex((index) => (index + 1) % lines.length);
+        return;
+      }
+
+      setCharCount((count) => count + (deleting ? -1 : 1));
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [charCount, currentChars.length, deleting, lineIndex, lines]);
+
+  return (
+    <p className="typewriter-copy" aria-label={currentLine}>
+      <span aria-hidden="true">{currentChars.slice(0, charCount).join("")}</span>
+      <span className="typewriter-caret" aria-hidden="true" />
+    </p>
   );
 }
 

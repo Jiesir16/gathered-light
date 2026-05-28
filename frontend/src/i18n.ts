@@ -15,6 +15,10 @@ export const i18n = {
     issue: "拾光为集 · 个人影像手记",
     headline: "拾起那些被光掠过的、缓慢而不起眼的寻常一刻。",
     intro: "街角、天气、窗台上的一杯茶，均被轻轻收录于此，留于多年以后翻看。",
+    introLines: [
+      "街角、天气、窗台上的一杯茶，均被轻轻收录于此，留于多年以后翻看。",
+      "把日常里微弱的光、风声与停顿收好，等某个下午再慢慢翻开。"
+    ],
     updated: "更新于 2026.05",
     frames: (n: number) => `${n} 帧`,
     admin: "管理",
@@ -149,6 +153,10 @@ export const i18n = {
     issue: "Field Notebook · Personal Archive",
     headline: "Quiet hours, borrowed light, and the small ordinary in between.",
     intro: "Streets, weather, and slow afternoons of rooms, kept here to be wandered through later.",
+    introLines: [
+      "Streets, weather, and slow afternoons of rooms, kept here to be wandered through later.",
+      "Small light, quiet pauses, and the weather of a day are saved for another afternoon."
+    ],
     updated: "Updated · May 2026",
     frames: (n: number) => `${n} frames`,
     admin: "Admin",
