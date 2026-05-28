@@ -2,7 +2,7 @@ use axum::{Json, extract::State};
 
 use crate::{
     bootstrap::AppState,
-    dto::settings_dto::{SettingsResp, UpdateThemeReq},
+    dto::settings_dto::{SettingsResp, UpdateRangeReq, UpdateThemeReq},
     error::AppResult,
     services::settings_service,
 };
@@ -16,4 +16,11 @@ pub async fn update_theme(
     Json(req): Json<UpdateThemeReq>,
 ) -> AppResult<Json<SettingsResp>> {
     Ok(Json(settings_service::update_theme(&state, req).await?))
+}
+
+pub async fn update_range(
+    State(state): State<AppState>,
+    Json(req): Json<UpdateRangeReq>,
+) -> AppResult<Json<SettingsResp>> {
+    Ok(Json(settings_service::update_range(&state, req).await?))
 }

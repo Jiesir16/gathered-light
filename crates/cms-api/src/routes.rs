@@ -44,6 +44,10 @@ pub fn build(state: AppState) -> Router {
             "/admin/settings/theme",
             patch(settings_handler::update_theme),
         )
+        .route(
+            "/admin/settings/range",
+            patch(settings_handler::update_range),
+        )
         .route("/admin/media/presign", post(media_handler::presign))
         .route("/admin/media/complete", post(media_handler::complete))
         .route(

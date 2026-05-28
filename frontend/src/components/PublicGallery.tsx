@@ -6,7 +6,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent
 } from "react";
-import { api } from "../api/client";
+import { api, settings } from "../api/client";
 import { categories } from "../i18n";
 import { useLang } from "../hooks/useLang";
 import { usePhotos } from "../hooks/usePhotos";
@@ -19,6 +19,7 @@ export function PublicGallery() {
   const [category, setCategory] = useState("all");
   const [activeId, setActiveId] = useState<number | null>(null);
   const [unlocked, setUnlocked] = useState<Set<number>>(() => new Set());
+  const [siteRange, setSiteRange] = useState(() => document.documentElement.dataset.range || (t.range as string));
   const masonryRef = useRef<HTMLElement | null>(null);
 
   const filtered = useMemo(() => (
@@ -27,6 +28,27 @@ export function PublicGallery() {
   const introLines = t.introLines;
   const active = filtered.find((photo) => photo.id === activeId) ?? null;
   const activeIndex = filtered.findIndex((photo) => photo.id === activeId);
+
+  useEffect(() => {
+    const range = document.documentElement.dataset.range;
+    setSiteRange(range?.trim() ? range : (t.range as string));
+  }, [t.range]);
+
+  useEffect(() => {
+    let alive = true;
+    settings
+      .get()
+      .then((resp) => {
+        const range = resp.range?.trim();
+        if (!alive || !range) return;
+        document.documentElement.dataset.range = range;
+        setSiteRange(range);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const move = (direction: -1 | 1) => {
     if (!filtered.length) return;
@@ -153,7 +175,7 @@ export function PublicGallery() {
       <footer className="footer">
         <div>
           <strong>{t.siteName}</strong>
-          <span>{t.range}</span>
+          <span>{siteRange}</span>
         </div>
       </footer>
 

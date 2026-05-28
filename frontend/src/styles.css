@@ -1630,6 +1630,60 @@ a {
   font-size: 12px;
 }
 
+.admin-shell.sidebar .appearance-setting {
+  margin-top: 18px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 10px;
+  background: var(--admin-card-bg);
+  box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-shell.sidebar .appearance-setting-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-shell.sidebar .appearance-setting-copy strong {
+  color: var(--admin-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.admin-shell.sidebar .appearance-setting-copy span {
+  color: var(--admin-text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.admin-shell.sidebar .appearance-inline-form {
+  display: grid;
+  grid-template-columns: minmax(190px, 260px) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-shell.sidebar .appearance-inline-form input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text);
+  outline: none;
+}
+
+.admin-shell.sidebar .appearance-inline-form input:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(94, 122, 100, 0.14);
+}
+
 /* —— 工具栏 / 过滤芯片 —— */
 .admin-shell.sidebar .toolbar {
   margin-bottom: 16px;
@@ -1757,6 +1811,7 @@ a {
   background: #fafafa;
 }
 
+.admin-shell.sidebar .primary:disabled,
 .admin-shell.sidebar .secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -2142,6 +2197,15 @@ body:has(.admin-shell.sidebar) .photo-dialog {
   }
 
   .admin-shell.sidebar .theme-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-shell.sidebar .appearance-setting {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-shell.sidebar .appearance-inline-form {
     grid-template-columns: 1fr;
   }
 

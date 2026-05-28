@@ -780,9 +780,13 @@ function DashboardView() {
 
 function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
   const { t } = useLang();
+  const defaultRange = t.range as string;
   const [current, setCurrent] = useState<ThemeName>("warm");
+  const [range, setRange] = useState(defaultRange);
+  const [rangeDraft, setRangeDraft] = useState(defaultRange);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<ThemeName | null>(null);
+  const [savingRange, setSavingRange] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setLocalNotice] = useState<string | null>(null);
 
@@ -793,9 +797,17 @@ function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
     settings
       .get()
       .then((resp) => {
-        if (!alive || !isTheme(resp.theme)) return;
-        setCurrent(resp.theme);
-        document.documentElement.dataset.theme = resp.theme;
+        if (!alive) return;
+        if (isTheme(resp.theme)) {
+          setCurrent(resp.theme);
+          document.documentElement.dataset.theme = resp.theme;
+        }
+        const nextRange = resp.range?.trim();
+        if (nextRange) {
+          setRange(nextRange);
+          setRangeDraft(nextRange);
+          document.documentElement.dataset.range = nextRange;
+        }
       })
       .catch((err) => {
         if (alive) setError(err instanceof Error ? err.message : "Load theme failed");
@@ -826,6 +838,32 @@ function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
       setError(err instanceof Error ? err.message : "Update theme failed");
     } finally {
       setSaving(null);
+    }
+  };
+
+  const saveRange = async () => {
+    const nextRange = rangeDraft.trim();
+    if (!nextRange || nextRange === range) return;
+
+    setSavingRange(true);
+    setError(null);
+    setLocalNotice(null);
+    try {
+      const resp = await adminSettings.updateRange(nextRange);
+      const savedRange = resp.range?.trim() || nextRange;
+      if (isTheme(resp.theme)) {
+        setCurrent(resp.theme);
+        document.documentElement.dataset.theme = resp.theme;
+      }
+      setRange(savedRange);
+      setRangeDraft(savedRange);
+      document.documentElement.dataset.range = savedRange;
+      setLocalNotice(t.siteRangeSaved as string);
+      onNotice(t.siteRangeSaved as string);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update range failed");
+    } finally {
+      setSavingRange(false);
     }
   };
 
@@ -863,6 +901,33 @@ function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
           );
         })}
       </section>
+
+      <form
+        className="appearance-setting"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void saveRange();
+        }}
+      >
+        <div className="appearance-setting-copy">
+          <strong>{t.siteRangeLabel as string}</strong>
+          <span>{t.siteRangeHint as string}</span>
+        </div>
+        <div className="appearance-inline-form">
+          <input
+            value={rangeDraft}
+            maxLength={32}
+            onChange={(event) => setRangeDraft(event.target.value)}
+          />
+          <button
+            type="submit"
+            className="primary"
+            disabled={savingRange || !rangeDraft.trim() || rangeDraft.trim() === range}
+          >
+            {savingRange ? "Saving..." : (t.save as string)}
+          </button>
+        </div>
+      </form>
     </>
   );
 }

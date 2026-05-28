@@ -34,6 +34,11 @@ type ApiRequestInit = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
+export type SiteSettings = {
+  theme: string;
+  range: string;
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -176,14 +181,19 @@ export const api = {
 };
 
 export const settings = {
-  get: () => request<{ theme: string }>("/api/v1/settings", { method: "GET" }, false)
+  get: () => request<SiteSettings>("/api/v1/settings", { method: "GET" }, false)
 };
 
 export const adminSettings = {
   updateTheme: (theme: string) =>
-    request<{ theme: string }>("/api/v1/admin/settings/theme", {
+    request<SiteSettings>("/api/v1/admin/settings/theme", {
       method: "PATCH",
       body: { theme }
+    }),
+  updateRange: (range: string) =>
+    request<SiteSettings>("/api/v1/admin/settings/range", {
+      method: "PATCH",
+      body: { range }
     })
 };
 

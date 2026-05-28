@@ -12,6 +12,9 @@ async function boot() {
     if (themes.includes(current.theme)) {
       document.documentElement.dataset.theme = current.theme;
     }
+    if (current.range?.trim()) {
+      document.documentElement.dataset.range = current.range;
+    }
   } catch {
     // Keep the CSS default warm theme.
   }

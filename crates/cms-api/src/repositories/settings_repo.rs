@@ -19,7 +19,10 @@ pub async fn set(db: &DatabaseConnection, key: &str, value: &str) -> Result<(), 
     })
     .on_conflict(
         OnConflict::column(site_settings::Column::Key)
-            .update_columns([site_settings::Column::Value, site_settings::Column::UpdatedAt])
+            .update_columns([
+                site_settings::Column::Value,
+                site_settings::Column::UpdatedAt,
+            ])
             .to_owned(),
     )
     .exec_without_returning(db)
