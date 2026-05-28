@@ -53,6 +53,7 @@ type FormState = {
   date: string;
   privacy: Privacy;
   tagIds: number[];
+  passcode: string;
 };
 
 const emptyForm: FormState = {
@@ -69,7 +70,8 @@ const emptyForm: FormState = {
   cat: "street",
   date: "2026.05",
   privacy: "public",
-  tagIds: []
+  tagIds: [],
+  passcode: ""
 };
 
 function toForm(photo?: Photo): FormState {
@@ -88,7 +90,8 @@ function toForm(photo?: Photo): FormState {
     cat: photo.cat,
     date: photo.date,
     privacy: photo.privacy,
-    tagIds: photo.tags.map((tag) => tag.id)
+    tagIds: photo.tags.map((tag) => tag.id),
+    passcode: photo.passcode ?? ""
   };
 }
 
@@ -120,6 +123,10 @@ function toPayload(form: FormState): PhotoPayload {
       zh: form.altTextZh,
       en: form.altTextEn || form.altTextZh
     };
+  }
+  // Locked 才传 passcode；非 locked 不传，后端 new_photo_from_req 会自动清空
+  if (form.privacy === "locked" && form.passcode.trim()) {
+    payload.passcode = form.passcode.trim();
   }
   return payload;
 }
@@ -452,7 +459,21 @@ export function AdminApp() {
                     </div>
                     <span>{categories.find((item) => item.key === photo.cat)?.[lang]}</span>
                     <span>{photo.date}</span>
-                    <button className={`privacy-pill ${photo.privacy}`} onClick={() => void cyclePrivacy(photo)}>{privacyLabel(photo.privacy, lang)}</button>
+                    <div className="privacy-cell">
+                      <button className={`privacy-pill ${photo.privacy}`} onClick={() => void cyclePrivacy(photo)}>{privacyLabel(photo.privacy, lang)}</button>
+                      {photo.privacy === "locked" && photo.passcode && (
+                        <code
+                          className="passcode-chip"
+                          title={t.passcodeHint as string}
+                          onClick={() => {
+                            void navigator.clipboard.writeText(photo.passcode!);
+                            setNotice(t.passcodeCopied as string);
+                          }}
+                        >
+                          {photo.passcode}
+                        </code>
+                      )}
+                    </div>
                     <div className="row-actions">
                       <button onClick={() => setEditing(photo)}>{t.edit}</button>
                       <button onClick={() => void remove(photo)}>{t.delete}</button>
@@ -1562,6 +1583,19 @@ function PhotoDialog({
             </button>
           ))}
         </div>
+
+        {form.privacy === "locked" && (
+          <label className="span-2">
+            <span>{t.passcodeField as string}</span>
+            <input
+              value={form.passcode}
+              onChange={(event) => update("passcode", event.target.value)}
+              placeholder={t.passcodePlaceholder as string}
+              autoComplete="off"
+            />
+            <p className="upload-hint" style={{ margin: "4px 0 0" }}>{t.passcodeHint as string}</p>
+          </label>
+        )}
 
         <fieldset className="span-2" style={{ border: "1px solid rgba(0, 0, 0, 0.12)", borderRadius: 8, padding: 12 }}>
           <legend>{t.tags as string}</legend>

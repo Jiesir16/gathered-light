@@ -121,7 +121,12 @@ export const i18n = {
     chooseFile: "选择文件",
     viewOriginal: "查看原图",
     download: "保存原图",
-    downloading: "下载中..."
+    downloading: "下载中...",
+    passcodeField: "口令",
+    passcodePlaceholder: "留空保留旧口令",
+    passcodeHint: "Locked 照片的分享口令；admin 可见明文",
+    passcodeCopied: "口令已复制",
+    passcodeNone: "—"
   },
   en: {
     siteName: "Gathered Light",
@@ -236,7 +241,12 @@ export const i18n = {
     chooseFile: "Choose file",
     viewOriginal: "View original",
     download: "Save",
-    downloading: "Downloading..."
+    downloading: "Downloading...",
+    passcodeField: "Passcode",
+    passcodePlaceholder: "leave blank to keep current",
+    passcodeHint: "Shared passcode for locked photos; visible to admin",
+    passcodeCopied: "Passcode copied",
+    passcodeNone: "—"
   }
 } satisfies Record<Lang, Record<string, unknown>>;
 

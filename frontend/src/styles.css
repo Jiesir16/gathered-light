@@ -1486,6 +1486,36 @@ a {
   color: #54585f;
 }
 
+/* privacy 列：pill + passcode 芯片堆一起 */
+.admin-shell.sidebar .privacy-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-shell.sidebar .passcode-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px dashed var(--admin-rule);
+  border-radius: 6px;
+  background: #fafafa;
+  color: var(--admin-text);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  cursor: pointer;
+  user-select: all;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.admin-shell.sidebar .passcode-chip:hover {
+  border-color: var(--admin-accent);
+  background: rgba(94, 122, 100, 0.06);
+}
+
 .admin-shell.sidebar .row-actions button {
   padding: 4px 10px;
   border-radius: 6px;

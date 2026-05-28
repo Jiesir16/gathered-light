@@ -59,6 +59,8 @@ export interface Photo {
   privacy: Privacy;
   tags: TagSummary[];
   variants: PhotoVariants;
+  /** Locked 照片的明文口令（仅 admin 接口下发） */
+  passcode?: string;
 }
 
 export interface TagSummary {
@@ -86,11 +88,13 @@ export interface UpdateTagReq {
   name?: I18nText;
 }
 
-export type PhotoPayload = Omit<Photo, "id" | "tags" | "slug" | "caption" | "alt_text" | "variants"> & {
+export type PhotoPayload = Omit<Photo, "id" | "tags" | "slug" | "caption" | "alt_text" | "variants" | "passcode"> & {
   slug?: string;
   caption?: I18nText;
   alt_text?: I18nText;
   tag_ids: number[];
+  /** 仅 privacy=locked 时有意义；其它隐私下后端忽略 */
+  passcode?: string;
 };
 
 export interface PhotoListResp {
