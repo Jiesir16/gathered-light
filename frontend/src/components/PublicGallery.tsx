@@ -129,10 +129,7 @@ export function PublicGallery() {
         <section className="intro">
           <div className="intro-copy">
             <p className="intro-kicker">{t.issue}</p>
-            <h1 className="intro-title" aria-label={t.headline}>
-              <span className="intro-title-lead" aria-hidden="true">{t.headlineLead}</span>
-              <span className="intro-title-rest" aria-hidden="true">{t.headlineRest}</span>
-            </h1>
+            <h1 className="intro-title">{t.headline}</h1>
           </div>
           <aside>
             <TypewriterText lines={introLines} />
