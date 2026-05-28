@@ -4,7 +4,7 @@ import { categories } from "../i18n";
 import { useLang } from "../hooks/useLang";
 import { usePhotos } from "../hooks/usePhotos";
 import type { Photo } from "../types";
-import { ArrowIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeOffIcon, LockIcon } from "./Icons";
+import { ArrowIcon, CloseIcon, DownloadIcon, ExternalLinkIcon, EyeOffIcon, LockIcon, SearchIcon } from "./Icons";
 
 export function PublicGallery() {
   const { lang, setLang, t } = useLang();
@@ -102,7 +102,18 @@ function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: 
   const jpgSrc = photo.variants?.medium ?? photo.src;
   const webpSrc = photo.variants?.webp;
   return (
-    <figure className="photo-card" onClick={onOpen}>
+    <figure
+      className="photo-card"
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
       <div className="photo-media">
         <picture>
           {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
@@ -116,6 +127,11 @@ function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: 
             onLoad={(event) => { event.currentTarget.dataset.loaded = "true"; }}
           />
         </picture>
+        {!hidden && (
+          <div className="photo-open-cue" aria-hidden="true">
+            <span><SearchIcon size={18} /></span>
+          </div>
+        )}
         {hidden && (
           <div className="photo-shield">
             {photo.privacy === "private" ? <EyeOffIcon /> : <LockIcon />}

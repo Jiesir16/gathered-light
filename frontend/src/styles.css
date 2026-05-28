@@ -345,27 +345,23 @@ a {
 
 .photo-card {
   position: relative;
+  display: inline-block;
+  width: 100%;
   margin: 0 0 20px;
   break-inside: avoid;
   overflow: hidden;
   background: var(--panel);
-  /* 入场：向上 6px 浮入；backwards 让 delay 期间也保持起始态 */
-  animation: cardIn 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  cursor: zoom-in;
+  animation: cardIn 320ms ease backwards;
 }
 
-/* 前 8 张错开 30ms 形成 stagger 视觉，后面同步进入避免太长 */
-.photo-card:nth-child(1)  { animation-delay:   0ms; }
-.photo-card:nth-child(2)  { animation-delay:  30ms; }
-.photo-card:nth-child(3)  { animation-delay:  60ms; }
-.photo-card:nth-child(4)  { animation-delay:  90ms; }
-.photo-card:nth-child(5)  { animation-delay: 120ms; }
-.photo-card:nth-child(6)  { animation-delay: 150ms; }
-.photo-card:nth-child(7)  { animation-delay: 180ms; }
-.photo-card:nth-child(8)  { animation-delay: 210ms; }
-.photo-card:nth-child(n+9) { animation-delay: 240ms; }
+.photo-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
 
 @keyframes cardIn {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
 }
 
@@ -388,12 +384,47 @@ a {
 }
 
 .photo-card:hover img {
-  transform: scale(1.03);
+  transform: scale(1.018);
 }
 
 .photo-media img.obscured {
   filter: blur(18px);
   transform: scale(1.1);
+}
+
+.photo-open-cue {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.14);
+  transition: opacity 180ms ease;
+}
+
+.photo-open-cue span {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  color: white;
+  background: rgba(20, 18, 15, 0.24);
+  backdrop-filter: blur(10px);
+  transform: translateY(4px) scale(0.96);
+  transition: transform 180ms ease;
+}
+
+.photo-card:hover .photo-open-cue,
+.photo-card:focus-visible .photo-open-cue {
+  opacity: 1;
+}
+
+.photo-card:hover .photo-open-cue span,
+.photo-card:focus-visible .photo-open-cue span {
+  transform: none;
 }
 
 .photo-shield {
