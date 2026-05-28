@@ -305,12 +305,13 @@ a {
 }
 
 .intro aside p.typewriter-copy {
-  min-height: 42px;
+  min-height: calc(2em * 2);
   color: var(--muted);
   font-size: 11px;
   letter-spacing: 0.28em;
   line-height: 2;
   text-transform: uppercase;
+  overflow: hidden;
 }
 
 .typewriter-caret {
