@@ -173,6 +173,18 @@ export const api = {
   complete: (payload: CompleteRequest) => request<CompleteResponse>("/api/v1/admin/media/complete", { method: "POST", body: payload })
 };
 
+export const settings = {
+  get: () => request<{ theme: string }>("/api/v1/settings", { method: "GET" }, false)
+};
+
+export const adminSettings = {
+  updateTheme: (theme: string) =>
+    request<{ theme: string }>("/api/v1/admin/settings/theme", {
+      method: "PATCH",
+      body: { theme }
+    })
+};
+
 export const adminTags = {
   list: (page = 1, pageSize = 50) =>
     request<TagListResponse>(`/api/v1/admin/tags?page=${page}&page_size=${pageSize}`),
