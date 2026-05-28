@@ -10,6 +10,11 @@
   --rule: #e8e3d8;
   --accent: #3f5f4a;
   --lightbox-bg: rgba(20, 18, 15, 0.82);
+  --site-texture:
+    repeating-linear-gradient(90deg, rgba(90, 85, 76, 0.035) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(0deg, rgba(90, 85, 76, 0.028) 0 1px, transparent 1px 18px),
+    radial-gradient(circle at 2px 2px, rgba(26, 24, 20, 0.026) 0 0.8px, transparent 0.9px);
+  --site-texture-size: auto, auto, 7px 7px;
 }
 
 :root[data-theme="cool"] {
@@ -22,6 +27,11 @@
   --rule: #e4e4e7;
   --accent: #18181b;
   --lightbox-bg: rgba(10, 10, 12, 0.82);
+  --site-texture:
+    repeating-linear-gradient(90deg, rgba(24, 24, 27, 0.022) 0 1px, transparent 1px 20px),
+    repeating-linear-gradient(0deg, rgba(24, 24, 27, 0.018) 0 1px, transparent 1px 20px),
+    radial-gradient(circle at 2px 2px, rgba(24, 24, 27, 0.018) 0 0.7px, transparent 0.8px);
+  --site-texture-size: auto, auto, 8px 8px;
 }
 
 :root[data-theme="bold"] {
@@ -34,6 +44,11 @@
   --rule: #d8d8d8;
   --accent: #b91c1c;
   --lightbox-bg: rgba(0, 0, 0, 0.85);
+  --site-texture:
+    repeating-linear-gradient(90deg, rgba(18, 18, 18, 0.024) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(0deg, rgba(18, 18, 18, 0.02) 0 1px, transparent 1px 18px),
+    radial-gradient(circle at 2px 2px, rgba(185, 28, 28, 0.018) 0 0.7px, transparent 0.8px);
+  --site-texture-size: auto, auto, 8px 8px;
 }
 
 :root {
@@ -79,12 +94,19 @@ a {
 .site-shell,
 .admin-shell {
   min-height: 100vh;
-  background: var(--bg);
 }
 
 /* 前台首屏淡入：从透明 + 向下 4px 抬起来；backwards 让动画在 delay 期间也生效 */
 .site-shell {
+  background-color: var(--bg);
+  background-image: var(--site-texture);
+  background-size: var(--site-texture-size);
+  background-attachment: fixed;
   animation: pageIn 380ms ease 40ms backwards;
+}
+
+.admin-shell {
+  background: var(--bg);
 }
 
 @keyframes pageIn {
