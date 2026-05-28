@@ -281,22 +281,11 @@ a {
 }
 
 .intro-kicker {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 0 0 24px;
+  margin: 0 0 22px;
   color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.18em;
+  font-size: 11px;
+  letter-spacing: 0.28em;
   text-transform: uppercase;
-}
-
-.intro-kicker-code {
-  padding-left: 12px;
-  border-left: 1px solid var(--rule);
-  color: var(--muted);
-  letter-spacing: 0.16em;
 }
 
 .intro-title {

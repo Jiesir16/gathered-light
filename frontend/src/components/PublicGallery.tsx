@@ -128,10 +128,7 @@ export function PublicGallery() {
       <main>
         <section className="intro">
           <div className="intro-copy">
-            <p className="intro-kicker" aria-label={t.issue}>
-              <span>{t.issue}</span>
-              <span className="intro-kicker-code">{t.range}</span>
-            </p>
+            <p className="intro-kicker">{t.issue}</p>
             <h1 className="intro-title" aria-label={t.headline}>
               <span className="intro-title-lead" aria-hidden="true">{t.headlineLead}</span>
               <span className="intro-title-rest" aria-hidden="true">{t.headlineRest}</span>
