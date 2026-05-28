@@ -1,9 +1,13 @@
 use std::time::Duration;
 
+use aws_sdk_s3::types::ObjectCannedAcl;
 use cms_entity::media_assets::Model;
 use image::ImageEncoder;
 
-use crate::{bootstrap::AppState, repositories::media_repo};
+use crate::{
+    bootstrap::AppState,
+    repositories::{media_repo, photo_repo},
+};
 
 pub async fn run(state: AppState) {
     tracing::info!("🖼  image_processor worker started");
@@ -58,6 +62,21 @@ async fn process_one(state: &AppState, asset: &Model) -> anyhow::Result<()> {
     let image = image::load_from_memory(&bytes)?;
     let (orig_w, orig_h) = (image.width(), image.height());
 
+    // 看绑定的 photo 是否 public，决定 variants 的 ACL；orphan asset 默认 private
+    let is_public = match photo_repo::find_privacy_by_primary_asset(&state.db, asset.id).await {
+        Ok(Some(privacy)) => privacy == "public",
+        Ok(None) => false,
+        Err(error) => {
+            tracing::warn!(error = ?error, asset_id = asset.id, "lookup photo privacy failed; default private");
+            false
+        }
+    };
+    let variants_acl = if is_public {
+        ObjectCannedAcl::PublicRead
+    } else {
+        ObjectCannedAcl::Private
+    };
+
     for variant in [
         Variant {
             name: "thumb_400",
@@ -91,6 +110,7 @@ async fn process_one(state: &AppState, asset: &Model) -> anyhow::Result<()> {
             .bucket(&state.config.s3.bucket)
             .key(&key)
             .content_type(variant.fmt.mime())
+            .acl(variants_acl.clone())
             .body(encoded.into())
             .send()
             .await?;
@@ -106,7 +126,13 @@ async fn process_one(state: &AppState, asset: &Model) -> anyhow::Result<()> {
         .await?;
     }
 
-    tracing::info!(asset_id = asset.id, orig_w, orig_h, "variants generated");
+    tracing::info!(
+        asset_id = asset.id,
+        orig_w,
+        orig_h,
+        is_public,
+        "variants generated"
+    );
     Ok(())
 }
 

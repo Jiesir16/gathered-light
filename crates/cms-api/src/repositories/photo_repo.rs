@@ -290,6 +290,22 @@ pub async fn update_privacy(
     .map(|_| ())
 }
 
+/// 按主图 asset id 查 photo 的隐私值（worker 决定 variants ACL 时用）。
+/// 返回 None 表示该 asset 还没绑到任何 photo（孤儿）。
+pub async fn find_privacy_by_primary_asset(
+    db: &DatabaseConnection,
+    asset_id: i64,
+) -> Result<Option<String>, DbErr> {
+    let row = photos::Entity::find()
+        .filter(photos::Column::PrimaryAssetId.eq(asset_id))
+        .select_only()
+        .column(photos::Column::Privacy)
+        .into_tuple::<String>()
+        .one(db)
+        .await?;
+    Ok(row)
+}
+
 pub async fn delete(db: &DatabaseConnection, id: i64) -> Result<(), DbErr> {
     let result = photos::Entity::delete_by_id(id).exec(db).await?;
     if result.rows_affected == 0 {

@@ -1,3 +1,6 @@
+use std::str::FromStr;
+
+use cms_domain::Privacy;
 use serde_json::Value;
 
 use crate::{
@@ -40,7 +43,8 @@ pub async fn overview(state: &AppState) -> AppResult<DashboardResp> {
             .get(&photo.asset.id)
             .map(Vec::as_slice)
             .unwrap_or(&[]);
-        let src = photo_service::cover_url_for(state, &photo.asset, variants).await?;
+        let privacy = Privacy::from_str(&photo.photo.privacy).unwrap_or(Privacy::Private);
+        let src = photo_service::cover_url_for(state, &photo.asset, variants, privacy).await?;
         recent.push(PhotoSummary {
             id: photo.photo.id,
             slug: photo.photo.slug,

@@ -137,10 +137,15 @@ pub async fn update(state: &AppState, id: i64, req: PhotoReq) -> AppResult<Photo
         .map_err(db_err)?
         .ok_or(AppError::NotFound)?;
     let slug = update_slug(state, id, &req, &current.photo.slug).await?;
+    let new_privacy = req.privacy;
     let input = new_photo_from_req(slug, req, current.photo.passcode_hash);
     photo_repo::update(&state.db, id, input)
         .await
         .map_err(db_err)?;
+    // privacy 可能在 update 里改了（前端可以编辑），同步 OSS ACL；也兼做存量数据 ACL 回填
+    if let Err(error) = sync_variants_acl_for_photo(state, id, new_privacy).await {
+        tracing::warn!(error = ?error, photo_id = id, "sync variants ACL after update failed");
+    }
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
     find_dto(state, id).await
 }
@@ -153,6 +158,10 @@ pub async fn update_privacy(state: &AppState, id: i64, req: PrivacyReq) -> AppRe
     photo_repo::update_privacy(&state.db, id, req.privacy, passcode_hash)
         .await
         .map_err(db_err)?;
+    // 同步把这张照片所有 variants 在 OSS 的 ACL 翻一下
+    if let Err(error) = sync_variants_acl_for_photo(state, id, req.privacy).await {
+        tracing::warn!(error = ?error, photo_id = id, "sync variants ACL after update_privacy failed");
+    }
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
     find_dto(state, id).await
 }
@@ -193,6 +202,12 @@ pub async fn bulk_update_privacy(state: &AppState, req: BulkPrivacyReq) -> AppRe
         photo_repo::update_privacy_many(&state.db, &existing, req.privacy, passcode_hash)
             .await
             .map_err(db_err)?;
+    // 批量翻 ACL（容错：单条失败不打断整批）
+    for photo_id in &existing {
+        if let Err(error) = sync_variants_acl_for_photo(state, *photo_id, req.privacy).await {
+            tracing::warn!(error = ?error, photo_id, "sync variants ACL in bulk failed");
+        }
+    }
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
     Ok(BulkResp { affected, skipped })
 }
@@ -357,7 +372,8 @@ async fn find_dto(state: &AppState, id: i64) -> AppResult<PhotoDto> {
         .await
         .map_err(db_err)?;
     let tags = tags_map.remove(&row.photo.id).unwrap_or_default();
-    let cover = cover_url_for(state, &row.asset, variants).await?;
+    let privacy = Privacy::from_str(&row.photo.privacy).unwrap_or(Privacy::Private);
+    let cover = cover_url_for(state, &row.asset, variants, privacy).await?;
     Ok(assemble_dto_with_cover(row, cover, tags))
 }
 
@@ -378,16 +394,22 @@ async fn assemble_list(state: &AppState, rows: Vec<PhotoFull>) -> AppResult<Vec<
             .map(Vec::as_slice)
             .unwrap_or(&[]);
         let tags = tags_map.get(&row.photo.id).cloned().unwrap_or_default();
-        let cover = cover_url_for(state, &row.asset, variants).await?;
+        let privacy = Privacy::from_str(&row.photo.privacy).unwrap_or(Privacy::Private);
+        let cover = cover_url_for(state, &row.asset, variants, privacy).await?;
         out.push(assemble_dto_with_cover(row, cover, tags));
     }
     Ok(out)
 }
 
+/// 生成首图（瀑布流卡片）的访问 URL。
+/// - 老的 demo 外链直通
+/// - **public 照片**：拼永久 URL（依赖 OSS 对象 ACL=public-read），永不过期
+/// - **locked / private 照片**：返回 1h 有效的 presigned URL（短 TTL 是安全特性）
 pub async fn cover_url_for(
     state: &AppState,
     asset: &media_assets::Model,
     variants: &[media_variants::Model],
+    privacy: Privacy,
 ) -> AppResult<String> {
     if asset.storage_key.starts_with("http://") || asset.storage_key.starts_with("https://") {
         return Ok(asset.storage_key.clone());
@@ -404,7 +426,54 @@ pub async fn cover_url_for(
         .map(|variant| variant.storage_key.as_str())
         .unwrap_or(asset.storage_key.as_str());
 
-    media_service::presign_get(&state.s3, &state.config.s3, key, 3600).await
+    match privacy {
+        Privacy::Public => Ok(media_service::permanent_url(state, key)),
+        Privacy::Locked | Privacy::Private => {
+            media_service::presign_get(&state.s3, &state.config.s3, key, 3600).await
+        }
+    }
+}
+
+/// 把 photo 的所有 variants 在 OSS 的 ACL 调整为符合当前 privacy。
+/// - public → public-read（永久 URL 才能用）
+/// - locked / private → private（被 presign 短 TTL 保护）
+/// 单个 variant 失败不抛错，只记日志：S3 偶发抖动不该让 DB 写好的事回滚。
+async fn sync_variants_acl_for_photo(
+    state: &AppState,
+    photo_id: i64,
+    privacy: Privacy,
+) -> AppResult<()> {
+    let row = photo_repo::find_by_id(&state.db, photo_id)
+        .await
+        .map_err(db_err)?;
+    let Some(row) = row else { return Ok(()) };
+    let variants_map = media_repo::find_variants_for_assets(&state.db, &[row.asset.id])
+        .await
+        .map_err(db_err)?;
+    let Some(variants) = variants_map.get(&row.asset.id) else {
+        return Ok(()); // worker 还没跑完，新生成的会自带正确 ACL
+    };
+    let bucket = &state.config.s3.bucket;
+    for variant in variants {
+        let result = match privacy {
+            Privacy::Public => {
+                media_service::set_object_public(&state.s3, bucket, &variant.storage_key).await
+            }
+            Privacy::Locked | Privacy::Private => {
+                media_service::set_object_private(&state.s3, bucket, &variant.storage_key).await
+            }
+        };
+        if let Err(error) = result {
+            tracing::warn!(
+                error = ?error,
+                photo_id,
+                variant = %variant.variant,
+                key = %variant.storage_key,
+                "set variant ACL failed"
+            );
+        }
+    }
+    Ok(())
 }
 
 fn db_err(error: DbErr) -> AppError {

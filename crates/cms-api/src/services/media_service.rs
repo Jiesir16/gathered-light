@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, time::Duration};
 
 use aws_sdk_s3::Client as S3Client;
 use aws_sdk_s3::presigning::PresigningConfig;
+use aws_sdk_s3::types::ObjectCannedAcl;
 use sea_orm::DbErr;
 
 use crate::{
@@ -48,7 +49,7 @@ pub async fn presign_upload(state: &AppState, req: PresignReq) -> AppResult<Pres
         })?;
 
     let upload_url = request.uri().to_string();
-    let public_url = public_url(state, &storage_key);
+    let public_url = permanent_url(state, &storage_key);
 
     let mut headers = BTreeMap::new();
     headers.insert("content-type".to_owned(), req.mime_type);
@@ -105,7 +106,7 @@ pub async fn complete_upload(state: &AppState, req: CompleteReq) -> AppResult<Co
     Ok(CompleteResp {
         asset_id: asset.id,
         storage_key: req.storage_key,
-        public_url: public_url(state, &asset.storage_key),
+        public_url: permanent_url(state, &asset.storage_key),
     })
 }
 
@@ -149,13 +150,47 @@ fn sanitize_file_name(input: &str) -> String {
     }
 }
 
-fn public_url(state: &AppState, storage_key: &str) -> String {
+/// 拼公开访问 URL（依赖对象 ACL=public-read）。
+///
+/// 拼接策略保持跟历史调用一致：endpoint + bucket + key。
+/// 即使 endpoint 本身已经含 bucket（早期配错的情况），也兼容旧链接形态。
+pub fn permanent_url(state: &AppState, storage_key: &str) -> String {
     format!(
         "{}/{}/{}",
         state.config.s3.endpoint.trim_end_matches('/'),
         state.config.s3.bucket,
         storage_key
     )
+}
+
+/// 把 OSS 对象 ACL 翻成 public-read（公开照片用）。
+pub async fn set_object_public(s3: &S3Client, bucket: &str, key: &str) -> AppResult<()> {
+    s3.put_object_acl()
+        .bucket(bucket)
+        .key(key)
+        .acl(ObjectCannedAcl::PublicRead)
+        .send()
+        .await
+        .map_err(|error| {
+            tracing::warn!(error = ?error, bucket, key, "set object public failed");
+            AppError::Internal("set object public failed")
+        })?;
+    Ok(())
+}
+
+/// 把 OSS 对象 ACL 翻成 private（locked/private 用 / 切回非公开时）。
+pub async fn set_object_private(s3: &S3Client, bucket: &str, key: &str) -> AppResult<()> {
+    s3.put_object_acl()
+        .bucket(bucket)
+        .key(key)
+        .acl(ObjectCannedAcl::Private)
+        .send()
+        .await
+        .map_err(|error| {
+            tracing::warn!(error = ?error, bucket, key, "set object private failed");
+            AppError::Internal("set object private failed")
+        })?;
+    Ok(())
 }
 
 fn db_err(error: DbErr) -> AppError {
