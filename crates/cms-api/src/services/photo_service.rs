@@ -119,9 +119,15 @@ pub async fn categories(state: &AppState) -> AppResult<Vec<CategoryDto>> {
 
 pub async fn create(state: &AppState, req: PhotoReq) -> AppResult<PhotoDto> {
     validate(&req)?;
+    let privacy = req.privacy;
     let slug = create_slug(state, &req).await?;
     let input = new_photo_from_req(slug, req, None);
     let id = photo_repo::create(&state.db, input).await.map_err(db_err)?;
+    // worker 常在 photo 创建前就处理完 variants（那时查不到照片→默认按 private 传），
+    // 这里按本张照片的真实 privacy 回填一次 OSS ACL，否则 public 照片的 variant 仍是私有 → 前端 403。
+    if let Err(error) = sync_variants_acl_for_photo(state, id, privacy).await {
+        tracing::warn!(error = ?error, photo_id = id, "sync variants ACL after create failed");
+    }
     cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
     find_dto(state, id, DtoScope::Admin).await
 }
@@ -183,7 +189,8 @@ pub async fn recover_urls(state: &AppState, id: i64) -> AppResult<PhotoDto> {
                 .collect()
         })
         .unwrap_or_default();
-    let recovered_asset_key = object_key_from_stored_url(&current.asset.storage_key, &["uploads/"]);
+    let recovered_asset_key =
+        object_key_from_stored_url(&current.asset.storage_key, &["uploads/", "variants/"]);
 
     let effective_asset_id = photo_repo::recover_expired_media_urls(
         &state.db,
@@ -423,6 +430,13 @@ async fn build_dto(
         DtoScope::Admin => full.photo.passcode.clone(),
         DtoScope::Public => None,
     };
+    // 卡片显示的是 medium/webp，取它的像素宽高交给前端设 aspect-ratio；
+    // 各 variant 同比例缩放，挑不到 medium 就退而求其次，保证比例正确即可。
+    let dims = ["medium_900", "webp_900", "thumb_400", "full_1800"]
+        .iter()
+        .find_map(|name| variants.iter().find(|v| v.variant == *name))
+        .map(|v| (v.width, v.height))
+        .or_else(|| full.asset.width.zip(full.asset.height));
     Ok(PhotoDto {
         id: full.photo.id,
         slug: full.photo.slug.clone(),
@@ -440,6 +454,8 @@ async fn build_dto(
         alt_text: i18n_optional(full.alt_text_zh, full.alt_text_en),
         date: full.photo.taken_at_label,
         privacy,
+        width: dims.map(|(w, _)| w),
+        height: dims.map(|(_, h)| h),
         tags: tags.into_iter().map(tag_summary).collect(),
         variants: urls,
         passcode,
@@ -594,13 +610,31 @@ async fn sync_variants_acl_for_photo(
         .await
         .map_err(db_err)?;
     let Some(row) = row else { return Ok(()) };
+    let bucket = &state.config.s3.bucket;
+    if row.asset.storage_key.starts_with("variants/") {
+        let result = match privacy {
+            Privacy::Public => {
+                media_service::set_object_public(&state.s3, bucket, &row.asset.storage_key).await
+            }
+            Privacy::Locked | Privacy::Private => {
+                media_service::set_object_private(&state.s3, bucket, &row.asset.storage_key).await
+            }
+        };
+        if let Err(error) = result {
+            tracing::warn!(
+                error = ?error,
+                photo_id,
+                key = %row.asset.storage_key,
+                "set recovered primary variant ACL failed"
+            );
+        }
+    }
     let variants_map = media_repo::find_variants_for_assets(&state.db, &[row.asset.id])
         .await
         .map_err(db_err)?;
     let Some(variants) = variants_map.get(&row.asset.id) else {
         return Ok(()); // worker 还没跑完，新生成的会自带正确 ACL
     };
-    let bucket = &state.config.s3.bucket;
     for variant in variants {
         let result = match privacy {
             Privacy::Public => {

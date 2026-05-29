@@ -38,6 +38,12 @@ pub struct PhotoDto {
     pub alt_text: Option<I18nText>,
     pub date: String,
     pub privacy: Privacy,
+    /// 卡片图（medium）的原始像素宽高，供前端设 aspect-ratio 预留版位、消除瀑布流加载抖动。
+    /// worker 未跑完或 demo 外链数据时为 None。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<i32>,
     pub tags: Vec<TagSummary>,
     /// 各尺寸 URL：public 照片是永久 URL，locked/private 是 1h presigned。
     /// 缺哪个 variant 就该字段空（worker 尚未跑完时 medium/full/webp 可能为 None）。

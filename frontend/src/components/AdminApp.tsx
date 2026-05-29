@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adminCategories, adminSettings, adminTags, adminUsers, api, clearSession, hasSession, login, logout, settings } from "../api/client";
+import type { HeroCopy } from "../api/client";
 import { categories, type Dictionary } from "../i18n";
 import { useDebounce } from "../hooks/useDebounce";
 import { useLang } from "../hooks/useLang";
@@ -787,6 +788,8 @@ function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<ThemeName | null>(null);
   const [savingRange, setSavingRange] = useState(false);
+  const [hero, setHero] = useState<HeroCopy | null>(null);
+  const [savingHero, setSavingHero] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setLocalNotice] = useState<string | null>(null);
 
@@ -808,6 +811,7 @@ function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
           setRangeDraft(nextRange);
           document.documentElement.dataset.range = nextRange;
         }
+        if (resp.hero) setHero(resp.hero);
       })
       .catch((err) => {
         if (alive) setError(err instanceof Error ? err.message : "Load theme failed");
@@ -864,6 +868,40 @@ function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
       setError(err instanceof Error ? err.message : "Update range failed");
     } finally {
       setSavingRange(false);
+    }
+  };
+
+  const saveHero = async () => {
+    if (!hero) return;
+    const cleaned: HeroCopy = {
+      issue: { zh: hero.issue.zh.trim(), en: hero.issue.en.trim() },
+      headline: { zh: hero.headline.zh.trim(), en: hero.headline.en.trim() },
+      introLines: {
+        zh: hero.introLines.zh.map((line) => line.trim()).filter(Boolean),
+        en: hero.introLines.en.map((line) => line.trim()).filter(Boolean)
+      }
+    };
+    if (
+      !cleaned.issue.zh || !cleaned.issue.en ||
+      !cleaned.headline.zh || !cleaned.headline.en ||
+      !cleaned.introLines.zh.length || !cleaned.introLines.en.length
+    ) {
+      setError(t.heroLinesHint as string);
+      return;
+    }
+
+    setSavingHero(true);
+    setError(null);
+    setLocalNotice(null);
+    try {
+      const resp = await adminSettings.updateHero(cleaned);
+      if (resp.hero) setHero(resp.hero);
+      setLocalNotice(t.heroSaved as string);
+      onNotice(t.heroSaved as string);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update hero failed");
+    } finally {
+      setSavingHero(false);
     }
   };
 
@@ -928,6 +966,89 @@ function AppearanceView({ onNotice }: { onNotice: (message: string) => void }) {
           </button>
         </div>
       </form>
+
+      {hero && (
+        <form
+          className="appearance-setting hero-setting"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveHero();
+          }}
+        >
+          <div className="appearance-setting-copy">
+            <strong>{t.heroLabel as string}</strong>
+            <span>{t.heroHint as string}</span>
+          </div>
+          <div className="hero-fields">
+            <label className="hero-field">
+              <span>{t.heroIssueZh as string}</span>
+              <input
+                value={hero.issue.zh}
+                maxLength={200}
+                onChange={(event) =>
+                  setHero({ ...hero, issue: { ...hero.issue, zh: event.target.value } })
+                }
+              />
+            </label>
+            <label className="hero-field">
+              <span>{t.heroIssueEn as string}</span>
+              <input
+                value={hero.issue.en}
+                maxLength={200}
+                onChange={(event) =>
+                  setHero({ ...hero, issue: { ...hero.issue, en: event.target.value } })
+                }
+              />
+            </label>
+            <label className="hero-field">
+              <span>{t.heroHeadlineZh as string}</span>
+              <input
+                value={hero.headline.zh}
+                maxLength={200}
+                onChange={(event) =>
+                  setHero({ ...hero, headline: { ...hero.headline, zh: event.target.value } })
+                }
+              />
+            </label>
+            <label className="hero-field">
+              <span>{t.heroHeadlineEn as string}</span>
+              <input
+                value={hero.headline.en}
+                maxLength={200}
+                onChange={(event) =>
+                  setHero({ ...hero, headline: { ...hero.headline, en: event.target.value } })
+                }
+              />
+            </label>
+            <label className="hero-field hero-field-wide">
+              <span>{t.heroLinesZh as string}</span>
+              <textarea
+                rows={3}
+                value={hero.introLines.zh.join("\n")}
+                onChange={(event) =>
+                  setHero({ ...hero, introLines: { ...hero.introLines, zh: event.target.value.split("\n") } })
+                }
+              />
+            </label>
+            <label className="hero-field hero-field-wide">
+              <span>{t.heroLinesEn as string}</span>
+              <textarea
+                rows={3}
+                value={hero.introLines.en.join("\n")}
+                onChange={(event) =>
+                  setHero({ ...hero, introLines: { ...hero.introLines, en: event.target.value.split("\n") } })
+                }
+              />
+            </label>
+          </div>
+          <div className="appearance-inline-form">
+            <span className="hero-lines-hint">{t.heroLinesHint as string}</span>
+            <button type="submit" className="primary" disabled={savingHero}>
+              {savingHero ? "Saving..." : (t.save as string)}
+            </button>
+          </div>
+        </form>
+      )}
     </>
   );
 }

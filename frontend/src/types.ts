@@ -57,6 +57,9 @@ export interface Photo {
   alt_text?: I18nText;
   date: string;
   privacy: Privacy;
+  /** 卡片图原始像素宽高，用于设 aspect-ratio 预留版位、消除瀑布流加载抖动 */
+  width?: number;
+  height?: number;
   tags: TagSummary[];
   variants: PhotoVariants;
   /** Locked 照片的明文口令（仅 admin 接口下发） */

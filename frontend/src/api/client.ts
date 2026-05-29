@@ -34,9 +34,18 @@ type ApiRequestInit = Omit<RequestInit, "body"> & {
   body?: unknown;
 };
 
+export type HeroI18n = { zh: string; en: string };
+export type HeroLines = { zh: string[]; en: string[] };
+export type HeroCopy = {
+  issue: HeroI18n;
+  headline: HeroI18n;
+  introLines: HeroLines;
+};
+
 export type SiteSettings = {
   theme: string;
   range: string;
+  hero: HeroCopy;
 };
 
 export class ApiError extends Error {
@@ -194,6 +203,11 @@ export const adminSettings = {
     request<SiteSettings>("/api/v1/admin/settings/range", {
       method: "PATCH",
       body: { range }
+    }),
+  updateHero: (hero: HeroCopy) =>
+    request<SiteSettings>("/api/v1/admin/settings/hero", {
+      method: "PATCH",
+      body: hero
     })
 };
 

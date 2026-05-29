@@ -14,6 +14,7 @@
     radial-gradient(circle at 1px 1px, rgba(26, 24, 20, 0.022) 0 0.65px, transparent 0.75px),
     radial-gradient(circle at 4px 5px, rgba(255, 255, 255, 0.34) 0 0.55px, transparent 0.7px);
   --site-texture-size: 8px 8px, 11px 11px;
+  --brand-light: #efcd86;
 }
 
 :root[data-theme="cool"] {
@@ -30,6 +31,7 @@
     radial-gradient(circle at 1px 1px, rgba(24, 24, 27, 0.014) 0 0.55px, transparent 0.7px),
     radial-gradient(circle at 5px 4px, rgba(255, 255, 255, 0.45) 0 0.5px, transparent 0.65px);
   --site-texture-size: 9px 9px, 13px 13px;
+  --brand-light: #cbd7ee;
 }
 
 :root[data-theme="bold"] {
@@ -46,6 +48,7 @@
     radial-gradient(circle at 1px 1px, rgba(18, 18, 18, 0.018) 0 0.6px, transparent 0.75px),
     radial-gradient(circle at 5px 4px, rgba(185, 28, 28, 0.012) 0 0.5px, transparent 0.65px);
   --site-texture-size: 8px 8px, 13px 13px;
+  --brand-light: #efc38c;
 }
 
 :root {
@@ -136,9 +139,8 @@ a {
   .typewriter-caret {
     animation: none !important;
   }
-  .topbar > .brand::after {
-    animation: none !important;
-    opacity: 0;
+  .photo-media::after {
+    display: none !important;
   }
 }
 
@@ -177,41 +179,8 @@ a {
 
 .topbar > .brand {
   position: relative;
-  isolation: isolate;
   margin-left: -12px;
   padding: 10px 12px;
-  border-radius: 14px;
-  overflow: hidden;
-}
-
-.topbar > .brand::before,
-.topbar > .brand::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-}
-
-.topbar > .brand::before {
-  inset: -18px -28px;
-  z-index: -1;
-  background:
-    radial-gradient(ellipse at 24% 50%, color-mix(in srgb, var(--accent) 18%, white) 0%, transparent 54%),
-    radial-gradient(ellipse at 58% 45%, rgba(255, 255, 255, 0.5) 0%, transparent 48%);
-  opacity: 0.48;
-  filter: blur(9px);
-}
-
-.topbar > .brand::after {
-  top: -34%;
-  bottom: -34%;
-  left: -46%;
-  z-index: 0;
-  width: 54px;
-  background: linear-gradient(102deg, transparent 0%, rgba(255, 255, 255, 0.56) 48%, transparent 100%);
-  transform: rotate(9deg);
-  animation: brandLightSweep 7.2s ease-in-out infinite;
-  mix-blend-mode: soft-light;
-  opacity: 0.72;
 }
 
 .brand span,
@@ -223,16 +192,31 @@ a {
   line-height: 1;
 }
 
-.topbar > .brand span,
+.topbar > .brand .brand-mark,
 .topbar > .brand small {
   position: relative;
-  z-index: 1;
 }
 
-.topbar > .brand span {
-  text-shadow:
-    0 0 18px color-mix(in srgb, var(--accent) 16%, transparent),
-    0 1px 0 rgba(255, 255, 255, 0.42);
+.topbar > .brand .brand-mark {
+  position: relative;
+  display: inline-block;
+  color: var(--fg);
+}
+
+@supports (-webkit-background-clip: text) {
+  .topbar > .brand .brand-mark {
+    background:
+      radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-light) 32%, var(--fg)) 0 20%, transparent 64%),
+      radial-gradient(ellipse at center, color-mix(in srgb, #ffffff 16%, var(--fg)) 0 18%, transparent 58%),
+      linear-gradient(104deg, var(--fg) 0%, color-mix(in srgb, var(--brand-light) 14%, var(--fg)) 48%, var(--fg) 76%);
+    background-size: 210% 180%, 190% 150%, 240% 100%;
+    background-position: 16% 16%, 86% 82%, 52% 50%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: brandTextAura 24s ease-in-out infinite alternate;
+    animation-delay: -8s;
+  }
 }
 
 .brand small {
@@ -242,21 +226,31 @@ a {
   text-transform: uppercase;
 }
 
-.topbar > .brand small {
-  text-shadow: 0 0 14px rgba(255, 255, 255, 0.52);
+@keyframes brandTextAura {
+  0% {
+    background-position: 16% 16%, 86% 82%, 52% 50%;
+    background-size: 210% 180%, 190% 150%, 240% 100%;
+  }
+  29% {
+    background-position: 24% 12%, 78% 88%, 48% 50%;
+    background-size: 230% 170%, 175% 165%, 255% 100%;
+  }
+  61% {
+    background-position: 10% 26%, 92% 72%, 58% 50%;
+    background-size: 195% 195%, 205% 140%, 225% 100%;
+  }
+  100% {
+    background-position: 28% 18%, 82% 78%, 45% 50%;
+    background-size: 220% 185%, 185% 160%, 250% 100%;
+  }
 }
 
-@keyframes brandLightSweep {
-  0%, 28% {
-    transform: translateX(0) rotate(9deg);
-    opacity: 0;
-  }
-  42%, 54% {
-    opacity: 0.72;
-  }
-  70%, 100% {
-    transform: translateX(310px) rotate(9deg);
-    opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+  .topbar > .brand .brand-mark {
+    background: none;
+    color: var(--fg);
+    -webkit-text-fill-color: currentColor;
+    animation: none;
   }
 }
 
@@ -362,12 +356,18 @@ a {
 }
 
 .intro-title {
+  position: relative;
   margin: 0;
   max-width: 860px;
   font-family: "Noto Serif SC", "Cormorant Garamond", Georgia, serif;
   font-size: clamp(30px, 4vw, 56px);
   font-weight: 500;
   line-height: 1.28;
+  color: var(--fg);
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.36),
+    0 18px 34px rgba(26, 24, 20, 0.045);
+  /* 实际动画在下面 .intro-title 的二次声明里统一管理 */
 }
 
 .intro aside p {
@@ -416,7 +416,9 @@ a {
 }
 
 .intro-title {
-  animation: introHeadlineIn 720ms cubic-bezier(0.22, 1, 0.36, 1) 200ms backwards;
+  /* 「字从雾里浮出来」：只动 blur + opacity + translateY，全是合成层属性、不触发重排。
+     原先还动 letter-spacing，会逐帧改变行宽，归零那刻换行位置突变 → 末尾「抖一下」，已去掉。 */
+  animation: headlineReveal 1400ms cubic-bezier(0.22, 1, 0.36, 1) 160ms both;
 }
 
 .intro > aside > p {
@@ -432,9 +434,21 @@ a {
   to   { opacity: 1; transform: none; }
 }
 
-@keyframes introHeadlineIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: none; }
+@keyframes headlineReveal {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(14px);
+  }
+  60% {
+    opacity: 0.85;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
 }
 
 @keyframes typewriterCaret {
@@ -459,10 +473,10 @@ a {
   background: var(--panel);
   cursor: pointer;
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(6px);
   transition:
-    opacity 360ms ease var(--reveal-delay, 0ms),
-    transform 360ms ease var(--reveal-delay, 0ms);
+    opacity 560ms ease var(--reveal-delay, 0ms),
+    transform 560ms cubic-bezier(0.2, 0.72, 0.18, 1) var(--reveal-delay, 0ms);
 }
 
 .photo-card.is-visible {
@@ -478,22 +492,61 @@ a {
 .photo-media {
   position: relative;
   overflow: hidden;
+  aspect-ratio: 4 / 5;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--panel) 82%, white), color-mix(in srgb, var(--panel) 90%, var(--accent) 10%));
+}
+
+.photo-media picture {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.photo-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 42%),
+    radial-gradient(ellipse at 50% 24%, rgba(232, 214, 168, 0.22), transparent 58%);
+  mix-blend-mode: screen;
+  opacity: 0.6;
+  transition: opacity 700ms ease var(--reveal-delay, 0ms);
+}
+
+.photo-card.is-visible .photo-media::after {
+  opacity: 0;
 }
 
 .photo-media img {
   display: block;
   width: 100%;
-  height: auto;
-  /* 默认半透明：等 onLoad 把 data-loaded=true 后再淡入；transform/filter 保留 hover 用 */
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+  /* 默认显影态：等 onLoad 把 data-loaded=true 后再清晰。
+     只用轻量 blur + opacity 渐显，去掉 contrast/saturate/sepia/brightness 那组
+     会让加载中画面发「颗粒/显影感」的色彩滤镜，渐显更干净丝滑。 */
   opacity: 0;
-  transition: opacity 380ms ease, transform 420ms ease, filter 420ms ease;
+  filter: blur(6px);
+  transition:
+    opacity 600ms ease,
+    filter 600ms ease,
+    transform 600ms cubic-bezier(0.2, 0.72, 0.18, 1);
 }
 
 .photo-media img[data-loaded="true"] {
   opacity: 1;
+  filter: none;
 }
 
-.photo-card:hover img {
+.photo-media img[data-error="true"] {
+  opacity: 0;
+}
+
+.photo-card:hover img:not(.obscured) {
   transform: scale(1.018);
 }
 
@@ -577,6 +630,13 @@ a {
 
 .lightbox-inner {
   width: min(1180px, 92vw);
+  /* 关键：必须给 inner 显式 height，否则 grid-template-rows 的 1fr
+     没有定型容器尺寸，stage 塌缩成内容自身大小，高分辨率图按 intrinsic
+     渲染就超过 inner 被截。height + max-height 双保险。 */
+  height: calc(100dvh - 80px);
+  max-height: calc(100dvh - 80px);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   color: white;
   /* 内容卡片轻微缩放出现，给点空间感（贝塞尔曲线让结尾更柔） */
   animation: panelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -584,13 +644,16 @@ a {
 
 .lightbox-inner.locked-state {
   width: min(420px, 92vw);
+  /* 加锁面板用自适应高度，不需要撑满 */
+  height: auto;
 }
 
 .lightbox-stage {
   width: 100%;
-  height: min(76vh, 780px);
-  display: grid;
-  place-items: center;
+  /* 让 grid 1fr 撑高（inner 有显式 height，1fr 是定型的 row track）。
+     position: relative 给 image 的 absolute 一个锚点。 */
+  position: relative;
+  min-height: 0;
   overflow: hidden;
   cursor: zoom-in;
   touch-action: none;
@@ -606,11 +669,17 @@ a {
 
 .lightbox-image {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
+  /* absolute + inset:0 + 100%/100% 让 image 盒子强制 = stage 盒子，
+     绕开「grid 项的 percentage 高度浏览器不解析」这个老问题。
+     object-fit:contain 让内容按比例缩放、居中、不裁切。 */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  object-position: center center;
   user-select: none;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+  filter: drop-shadow(0 28px 80px rgba(0, 0, 0, 0.45));
   will-change: transform;
   transition: transform 120ms ease;
   animation: lightboxImgIn 180ms ease forwards;
@@ -1757,6 +1826,62 @@ a {
   box-shadow: 0 0 0 3px rgba(94, 122, 100, 0.14);
 }
 
+.admin-shell.sidebar .hero-setting {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.admin-shell.sidebar .hero-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.admin-shell.sidebar .hero-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-shell.sidebar .hero-field-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-shell.sidebar .hero-field span {
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-shell.sidebar .hero-field input,
+.admin-shell.sidebar .hero-field textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--admin-rule);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--admin-text);
+  outline: none;
+  font: inherit;
+  resize: vertical;
+}
+
+.admin-shell.sidebar .hero-field input:focus,
+.admin-shell.sidebar .hero-field textarea:focus {
+  border-color: var(--admin-accent);
+  box-shadow: 0 0 0 3px rgba(94, 122, 100, 0.14);
+}
+
+.admin-shell.sidebar .hero-setting .appearance-inline-form {
+  grid-template-columns: 1fr auto;
+}
+
+.admin-shell.sidebar .hero-lines-hint {
+  color: var(--admin-text-muted);
+  font-size: 12px;
+}
+
 /* —— 工具栏 / 过滤芯片 —— */
 .admin-shell.sidebar .toolbar {
   margin-bottom: 16px;
@@ -2306,22 +2431,27 @@ body:has(.admin-shell.sidebar) .photo-dialog {
     max-width: 100vw;
     width: 100%;
     padding: 0 12px;
+    /* 移动端同样给 inner 显式高度，让 grid 1fr 撑住 stage */
+    height: calc(100dvh - 96px);
+    max-height: calc(100dvh - 96px);
   }
 
   .lightbox-inner.locked-state {
     max-width: 420px;
     width: 100%;
+    height: auto;
   }
 
   .lightbox-stage {
-    height: calc(100dvh - 220px);
+    /* grid 1fr 自动撑高，不再额外加 max-height */
+    min-height: 0;
   }
 
   .lightbox-image {
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
     margin: 0 auto;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.4));
   }
 
   .icon-button {

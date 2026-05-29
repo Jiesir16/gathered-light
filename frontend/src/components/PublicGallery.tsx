@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   useEffect,
   useMemo,
   useRef,
@@ -7,6 +8,7 @@ import {
   type WheelEvent as ReactWheelEvent
 } from "react";
 import { api, settings } from "../api/client";
+import type { HeroCopy } from "../api/client";
 import { categories } from "../i18n";
 import { useLang } from "../hooks/useLang";
 import { usePhotos } from "../hooks/usePhotos";
@@ -20,12 +22,15 @@ export function PublicGallery() {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [unlocked, setUnlocked] = useState<Set<number>>(() => new Set());
   const [siteRange, setSiteRange] = useState(() => document.documentElement.dataset.range || (t.range as string));
+  const [hero, setHero] = useState<HeroCopy | null>(null);
   const masonryRef = useRef<HTMLElement | null>(null);
 
   const filtered = useMemo(() => (
     category === "all" ? photos : photos.filter((photo) => photo.cat === category)
   ), [category, photos]);
-  const introLines = t.introLines;
+  const issue = hero ? hero.issue[lang] : (t.issue as string);
+  const headline = hero ? hero.headline[lang] : (t.headline as string);
+  const introLines = hero ? hero.introLines[lang] : t.introLines;
   const active = filtered.find((photo) => photo.id === activeId) ?? null;
   const activeIndex = filtered.findIndex((photo) => photo.id === activeId);
 
@@ -39,8 +44,10 @@ export function PublicGallery() {
     settings
       .get()
       .then((resp) => {
+        if (!alive) return;
+        if (resp.hero) setHero(resp.hero);
         const range = resp.range?.trim();
-        if (!alive || !range) return;
+        if (!range) return;
         document.documentElement.dataset.range = range;
         setSiteRange(range);
       })
@@ -64,62 +71,27 @@ export function PublicGallery() {
 
     const cards = Array.from(root.querySelectorAll<HTMLElement>(".photo-card"));
     if (!cards.length) return;
-    const images = cards
-      .map((card) => card.querySelector("img"))
-      .filter((image): image is HTMLImageElement => Boolean(image));
-
     cards.forEach((card) => {
       card.classList.remove("is-visible");
       card.style.setProperty("--reveal-delay", "0ms");
     });
 
-    let layoutFrame = 0;
     let revealFrame = 0;
-    let fallbackTimer = 0;
-    let didReveal = false;
 
-    const revealTopDown = () => {
-      if (didReveal) return;
-      didReveal = true;
-      window.clearTimeout(fallbackTimer);
-
-      layoutFrame = window.requestAnimationFrame(() => {
-        const topValues = cards.map((card) => card.offsetTop);
-        const minTop = Math.min(...topValues);
-
-        cards.forEach((card, index) => {
-          const delay = Math.min(760, Math.max(0, (topValues[index] - minTop) * 0.42));
-          card.style.setProperty("--reveal-delay", `${Math.round(delay)}ms`);
-        });
-
-        revealFrame = window.requestAnimationFrame(() => {
-          cards.forEach((card) => card.classList.add("is-visible"));
-        });
+    revealFrame = window.requestAnimationFrame(() => {
+      const topValues = cards.map((card) => card.offsetTop);
+      const minTop = Math.min(...topValues);
+      cards.forEach((card, index) => {
+        const delay = Math.min(120, Math.max(0, (topValues[index] - minTop) * 0.04));
+        card.style.setProperty("--reveal-delay", `${Math.round(delay)}ms`);
       });
-    };
 
-    const revealAfterMeasurableLayout = () => {
-      if (cards.some((card) => card.getBoundingClientRect().height > 80)) {
-        revealTopDown();
-      }
-    };
-
-    images.forEach((image) => {
-      if (image.complete) return;
-      image.addEventListener("load", revealAfterMeasurableLayout, { once: true });
-      image.addEventListener("error", revealAfterMeasurableLayout, { once: true });
+      revealFrame = window.requestAnimationFrame(() => {
+        cards.forEach((card) => card.classList.add("is-visible"));
+      });
     });
 
-    layoutFrame = window.requestAnimationFrame(revealAfterMeasurableLayout);
-    fallbackTimer = window.setTimeout(revealTopDown, 520);
-
     return () => {
-      images.forEach((image) => {
-        image.removeEventListener("load", revealAfterMeasurableLayout);
-        image.removeEventListener("error", revealAfterMeasurableLayout);
-      });
-      window.clearTimeout(fallbackTimer);
-      window.cancelAnimationFrame(layoutFrame);
       window.cancelAnimationFrame(revealFrame);
     };
   }, [category, filtered]);
@@ -128,7 +100,7 @@ export function PublicGallery() {
     <div className="site-shell">
       <header className="topbar">
         <a className="brand" href="/">
-          <span>{t.siteName}</span>
+          <span className="brand-mark">{t.siteName}</span>
           <small>{t.siteSub}</small>
         </a>
         <nav className="category-nav" aria-label="categories">
@@ -150,8 +122,8 @@ export function PublicGallery() {
       <main>
         <section className="intro">
           <div className="intro-copy">
-            <p className="intro-kicker">{t.issue}</p>
-            <h1 className="intro-title">{t.headline}</h1>
+            <p className="intro-kicker">{issue}</p>
+            <h1 className="intro-title">{headline}</h1>
           </div>
           <aside>
             <TypewriterText lines={introLines} />
@@ -166,8 +138,16 @@ export function PublicGallery() {
         {error && <div className="state-line error">{error}</div>}
         {/* key={category} 让切类别时整个 masonry remount，重新跑图片 onLoad 淡入。 */}
         <section className="masonry" key={category} ref={masonryRef}>
-          {filtered.map((photo) => (
-            <PhotoCard key={photo.id} photo={photo} unlocked={unlocked.has(photo.id)} onOpen={() => setActiveId(photo.id)} lang={lang} />
+          {filtered.map((photo, index) => (
+            <PhotoCard
+              key={photo.id}
+              photo={photo}
+              index={index}
+              priority={index < 8}
+              unlocked={unlocked.has(photo.id)}
+              onOpen={() => setActiveId(photo.id)}
+              lang={lang}
+            />
           ))}
         </section>
       </main>
@@ -221,7 +201,7 @@ function TypewriterText({ lines }: { lines: string[] }) {
     const delay = deleting
       ? 54
       : atEnd
-        ? 2200
+        ? 6000
         : atStart && lineIndex > 0
           ? 420
           : 96;
@@ -252,11 +232,35 @@ function TypewriterText({ lines }: { lines: string[] }) {
   );
 }
 
-function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: boolean; onOpen: () => void; lang: "zh" | "en" }) {
+const fallbackRatios = ["4 / 5", "3 / 4", "1 / 1", "5 / 4", "2 / 3", "16 / 11", "4 / 3", "5 / 7"];
+
+function photoMediaStyle(photo: Photo, index: number): CSSProperties {
+  if (photo.width && photo.height) {
+    return { aspectRatio: `${photo.width} / ${photo.height}` };
+  }
+  return { aspectRatio: fallbackRatios[index % fallbackRatios.length] };
+}
+
+function PhotoCard({
+  photo,
+  index,
+  priority,
+  unlocked,
+  onOpen,
+  lang
+}: {
+  photo: Photo;
+  index: number;
+  priority: boolean;
+  unlocked: boolean;
+  onOpen: () => void;
+  lang: "zh" | "en";
+}) {
   const hidden = photo.privacy === "private" || (photo.privacy === "locked" && !unlocked);
   // 优先 webp（现代浏览器自动选）→ medium JPG → 兜底 src
   const jpgSrc = photo.variants?.medium ?? photo.src;
   const webpSrc = photo.variants?.webp;
+  const fetchPriority = index < 4 ? "high" : "auto";
   return (
     <figure
       className="photo-card"
@@ -270,17 +274,25 @@ function PhotoCard({ photo, unlocked, onOpen, lang }: { photo: Photo; unlocked: 
       role="button"
       tabIndex={0}
     >
-      <div className="photo-media">
+      <div className="photo-media" style={photoMediaStyle(photo, index)}>
         <picture>
           {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
           <img
             src={jpgSrc}
             alt={photo.title[lang]}
             className={hidden ? "obscured" : ""}
-            loading="lazy"
+            // 原始宽高让浏览器在加载前按比例预留版位，避免瀑布流回流抖动（CLS）
+            width={photo.width}
+            height={photo.height}
+            loading={priority ? "eager" : "lazy"}
             decoding="async"
             // data-loaded 触发淡入；缓存命中也会 fire onLoad，所以无 flicker
+            ref={(image) => {
+              image?.setAttribute("fetchpriority", fetchPriority);
+              if (image?.complete && image.naturalWidth > 0) image.dataset.loaded = "true";
+            }}
             onLoad={(event) => { event.currentTarget.dataset.loaded = "true"; }}
+            onError={(event) => { event.currentTarget.dataset.error = "true"; }}
           />
         </picture>
         {hidden && (

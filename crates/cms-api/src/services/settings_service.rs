@@ -4,7 +4,8 @@ use validator::Validate;
 use crate::{
     bootstrap::AppState,
     dto::settings_dto::{
-        SettingsResp, UpdateRangeReq, UpdateThemeReq, validate_range, validate_theme,
+        HeroCopy, SettingsResp, UpdateHeroReq, UpdateRangeReq, UpdateThemeReq, validate_range,
+        validate_theme,
     },
     error::{AppError, AppResult},
     infra::cache,
@@ -13,6 +14,7 @@ use crate::{
 
 const THEME_KEY: &str = "theme";
 const RANGE_KEY: &str = "range";
+const HERO_KEY: &str = "hero";
 const PUBLIC_CACHE_KEY: &str = "cms:settings:public";
 const DEFAULT_THEME: &str = "warm";
 const DEFAULT_RANGE: &str = "2025 - 2026";
@@ -53,6 +55,19 @@ pub async fn update_range(state: &AppState, req: UpdateRangeReq) -> AppResult<Se
     read_public_settings(state).await
 }
 
+#[tracing::instrument(skip(state, req))]
+pub async fn update_hero(state: &AppState, req: UpdateHeroReq) -> AppResult<SettingsResp> {
+    req.validate()
+        .map_err(|error| AppError::Validation(error.to_string()))?;
+    let payload =
+        serde_json::to_string(&req.hero).map_err(|error| AppError::Other(error.into()))?;
+    settings_repo::set(&state.db, HERO_KEY, &payload)
+        .await
+        .map_err(db_err)?;
+    cache::invalidate_prefix(&state.redis, "cms:settings:*").await;
+    read_public_settings(state).await
+}
+
 async fn read_public_settings(state: &AppState) -> AppResult<SettingsResp> {
     let theme = settings_repo::get(&state.db, THEME_KEY)
         .await
@@ -64,8 +79,13 @@ async fn read_public_settings(state: &AppState) -> AppResult<SettingsResp> {
         .map_err(db_err)?
         .filter(|range| validate_range(range).is_ok())
         .unwrap_or_else(|| DEFAULT_RANGE.to_owned());
+    let hero = settings_repo::get(&state.db, HERO_KEY)
+        .await
+        .map_err(db_err)?
+        .and_then(|raw| serde_json::from_str::<HeroCopy>(&raw).ok())
+        .unwrap_or_else(HeroCopy::default_copy);
 
-    Ok(SettingsResp { theme, range })
+    Ok(SettingsResp { theme, range, hero })
 }
 
 fn db_err(error: DbErr) -> AppError {
