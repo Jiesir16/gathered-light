@@ -176,7 +176,7 @@ const adminPhotoApi = {
 export const api = {
   me: () => request<{ user: User }>("/api/v1/auth/me"),
   dashboard: () => request<DashboardResp>("/api/v1/admin/dashboard"),
-  publicPhotos: () => request<Photo[]>("/api/v1/photos", {}, false),
+  publicPhotos: () => request<Photo[]>("/api/v1/photos?category=all", {}, false),
   publicTags: () => request<Tag[]>("/api/v1/tags", {}, false),
   adminPhotos: adminPhotoApi,
   createPhoto: adminPhotoApi.create,

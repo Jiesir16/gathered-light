@@ -5,7 +5,15 @@
 //!   - **中间件分层**：洋葱模型（外层日志 → 限流 → CORS → 鉴权 → 业务）。
 
 use axum::{
-    Router, middleware,
+    Router,
+    body::Body,
+    extract::Request,
+    http::{
+        HeaderValue,
+        header::{CACHE_CONTROL, EXPIRES, PRAGMA},
+    },
+    middleware,
+    response::Response,
     routing::{get, patch, post, put},
 };
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
@@ -48,10 +56,7 @@ pub fn build(state: AppState) -> Router {
             "/admin/settings/range",
             patch(settings_handler::update_range),
         )
-        .route(
-            "/admin/settings/hero",
-            patch(settings_handler::update_hero),
-        )
+        .route("/admin/settings/hero", patch(settings_handler::update_hero))
         .route("/admin/media/presign", post(media_handler::presign))
         .route("/admin/media/complete", post(media_handler::complete))
         .route(
@@ -118,9 +123,13 @@ pub fn build(state: AppState) -> Router {
         )
         .route_layer(middleware::from_fn_with_state(state.clone(), jwt_guard));
 
+    let api = public_api
+        .merge(protected_api)
+        .layer(middleware::from_fn(no_store_api));
+
     Router::new()
         .merge(public)
-        .nest("/api/v1", public_api.merge(protected_api))
+        .nest("/api/v1", api)
         .with_state(state)
         .fallback_service(
             ServeDir::new("frontend/dist")
@@ -137,4 +146,16 @@ pub fn build(state: AppState) -> Router {
                 .on_response(DefaultOnResponse::new().level(tracing::Level::INFO)),
         )
         .layer(CorsLayer::permissive())
+}
+
+async fn no_store_api(req: Request<Body>, next: middleware::Next) -> Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static("no-store, no-cache, must-revalidate, max-age=0"),
+    );
+    headers.insert(PRAGMA, HeaderValue::from_static("no-cache"));
+    headers.insert(EXPIRES, HeaderValue::from_static("0"));
+    response
 }
