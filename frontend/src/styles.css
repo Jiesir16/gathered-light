@@ -160,15 +160,11 @@ a {
   backdrop-filter: blur(16px);
 }
 
-/* 公开顶栏改 3 列 grid：左 brand / 中 nav / 右 lang —— nav 视觉真正居中，
-   不受左右子区域宽度影响 */
+/* 公开顶栏：左右仍贴近原来的边距；PC 端分类导航锚到整条 topbar 的视觉中线。 */
 .topbar {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  position: sticky;
 }
-.topbar > .brand { justify-self: start; }
-.topbar > .category-nav { justify-self: center; }
-.topbar > .top-actions { justify-self: end; }
 
 .brand {
   display: flex;
@@ -179,8 +175,19 @@ a {
 
 .topbar > .brand {
   position: relative;
+  justify-self: start;
   margin-left: -12px;
   padding: 10px 12px;
+}
+
+.topbar > .category-nav {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.topbar > .top-actions {
+  margin-left: auto;
 }
 
 .brand span,
@@ -2286,6 +2293,11 @@ body:has(.admin-shell.sidebar) .photo-dialog {
   /* 窄屏退回 flex（让 flex-wrap: wrap 真正生效），否则 grid 不能换行 */
   .topbar {
     display: flex;
+  }
+
+  .topbar > .category-nav {
+    position: static;
+    transform: none;
   }
 
   .intro {
