@@ -4,8 +4,8 @@ use validator::Validate;
 use crate::{
     bootstrap::AppState,
     dto::settings_dto::{
-        HeroCopy, SettingsResp, UpdateHeroReq, UpdateRangeReq, UpdateThemeReq, validate_range,
-        validate_theme,
+        BrandEffect, HeroCopy, SettingsResp, UpdateBrandEffectReq, UpdateHeroReq, UpdateRangeReq,
+        UpdateThemeReq, validate_range, validate_theme,
     },
     error::{AppError, AppResult},
     infra::cache,
@@ -15,6 +15,7 @@ use crate::{
 const THEME_KEY: &str = "theme";
 const RANGE_KEY: &str = "range";
 const HERO_KEY: &str = "hero";
+const BRAND_EFFECT_KEY: &str = "brand_effect";
 const PUBLIC_CACHE_KEY: &str = "cms:settings:public";
 const DEFAULT_THEME: &str = "warm";
 const DEFAULT_RANGE: &str = "2025 - 2026";
@@ -68,6 +69,22 @@ pub async fn update_hero(state: &AppState, req: UpdateHeroReq) -> AppResult<Sett
     read_public_settings(state).await
 }
 
+#[tracing::instrument(skip(state, req))]
+pub async fn update_brand_effect(
+    state: &AppState,
+    req: UpdateBrandEffectReq,
+) -> AppResult<SettingsResp> {
+    req.validate()
+        .map_err(|error| AppError::Validation(error.to_string()))?;
+    let payload =
+        serde_json::to_string(&req.brand_effect).map_err(|error| AppError::Other(error.into()))?;
+    settings_repo::set(&state.db, BRAND_EFFECT_KEY, &payload)
+        .await
+        .map_err(db_err)?;
+    cache::invalidate_prefix(&state.redis, "cms:settings:*").await;
+    read_public_settings(state).await
+}
+
 async fn read_public_settings(state: &AppState) -> AppResult<SettingsResp> {
     let theme = settings_repo::get(&state.db, THEME_KEY)
         .await
@@ -84,8 +101,19 @@ async fn read_public_settings(state: &AppState) -> AppResult<SettingsResp> {
         .map_err(db_err)?
         .and_then(|raw| serde_json::from_str::<HeroCopy>(&raw).ok())
         .unwrap_or_else(HeroCopy::default_copy);
+    let brand_effect = settings_repo::get(&state.db, BRAND_EFFECT_KEY)
+        .await
+        .map_err(db_err)?
+        .and_then(|raw| serde_json::from_str::<BrandEffect>(&raw).ok())
+        .filter(|brand_effect| brand_effect.validate().is_ok())
+        .unwrap_or_else(BrandEffect::default_effect);
 
-    Ok(SettingsResp { theme, range, hero })
+    Ok(SettingsResp {
+        theme,
+        range,
+        hero,
+        brand_effect,
+    })
 }
 
 fn db_err(error: DbErr) -> AppError {

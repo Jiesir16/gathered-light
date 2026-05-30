@@ -61,6 +61,7 @@ async fn init_once() -> (axum::Router, AppState) {
         },
         s3: S3Cfg {
             endpoint: "http://localhost:9000".into(),
+            public_base_url: None,
             region: "us-east-1".into(),
             bucket: "gathered-light-test".into(),
             access_key: "minioadmin".into(),

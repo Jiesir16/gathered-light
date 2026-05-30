@@ -1,8 +1,8 @@
-use std::time::Duration;
+use std::{io::Cursor, time::Duration};
 
 use aws_sdk_s3::types::ObjectCannedAcl;
 use cms_entity::media_assets::Model;
-use image::ImageEncoder;
+use image::{ImageDecoder, ImageEncoder};
 
 use crate::{
     bootstrap::AppState,
@@ -59,7 +59,7 @@ async fn process_one(state: &AppState, asset: &Model) -> anyhow::Result<()> {
         .await?;
     let bytes = object.body.collect().await?.into_bytes();
 
-    let image = image::load_from_memory(&bytes)?;
+    let image = decode_with_orientation(bytes.as_ref())?;
     let (orig_w, orig_h) = (image.width(), image.height());
 
     // 看绑定的 photo 是否 public，决定 variants 的 ACL；orphan asset 默认 private
@@ -110,6 +110,7 @@ async fn process_one(state: &AppState, asset: &Model) -> anyhow::Result<()> {
             .bucket(&state.config.s3.bucket)
             .key(&key)
             .content_type(variant.fmt.mime())
+            .content_disposition("inline")
             .acl(variants_acl.clone())
             .body(encoded.into())
             .send()
@@ -134,6 +135,15 @@ async fn process_one(state: &AppState, asset: &Model) -> anyhow::Result<()> {
         "variants generated"
     );
     Ok(())
+}
+
+fn decode_with_orientation(bytes: &[u8]) -> anyhow::Result<image::DynamicImage> {
+    let reader = image::ImageReader::new(Cursor::new(bytes)).with_guessed_format()?;
+    let mut decoder = reader.into_decoder()?;
+    let orientation = decoder.orientation()?;
+    let mut image = image::DynamicImage::from_decoder(decoder)?;
+    image.apply_orientation(orientation);
+    Ok(image)
 }
 
 struct Variant {

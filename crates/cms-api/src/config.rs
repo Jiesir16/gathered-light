@@ -51,6 +51,8 @@ impl RedisCfg {
 #[derive(Clone, Deserialize)]
 pub struct S3Cfg {
     pub endpoint: String,
+    #[serde(default)]
+    pub public_base_url: Option<String>,
     pub region: String,
     pub bucket: String,
     pub access_key: String,
@@ -68,6 +70,7 @@ impl fmt::Debug for S3Cfg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("S3Cfg")
             .field("endpoint", &self.endpoint)
+            .field("public_base_url", &self.public_base_url)
             .field("region", &self.region)
             .field("bucket", &self.bucket)
             .field("access_key", &"<redacted>")

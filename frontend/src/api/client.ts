@@ -42,10 +42,18 @@ export type HeroCopy = {
   introLines: HeroLines;
 };
 
+export type BrandEffect = {
+  color: string;
+  glowSize: number;
+  glowDepth: number;
+  driftSpeed: number;
+};
+
 export type SiteSettings = {
   theme: string;
   range: string;
   hero: HeroCopy;
+  brandEffect: BrandEffect;
 };
 
 export class ApiError extends Error {
@@ -208,6 +216,11 @@ export const adminSettings = {
     request<SiteSettings>("/api/v1/admin/settings/hero", {
       method: "PATCH",
       body: hero
+    }),
+  updateBrandEffect: (brandEffect: BrandEffect) =>
+    request<SiteSettings>("/api/v1/admin/settings/brand-effect", {
+      method: "PATCH",
+      body: brandEffect
     })
 };
 

@@ -125,6 +125,7 @@ pub async fn presign_get(
         .get_object()
         .bucket(&cfg.bucket)
         .key(key)
+        .response_content_disposition("inline")
         .presigned(presigning)
         .await
         .map_err(|error| {
@@ -152,15 +153,25 @@ fn sanitize_file_name(input: &str) -> String {
 
 /// 拼公开访问 URL（依赖对象 ACL=public-read）。
 ///
-/// 拼接策略保持跟历史调用一致：endpoint + bucket + key。
-/// 即使 endpoint 本身已经含 bucket（早期配错的情况），也兼容旧链接形态。
+/// 如果配置了 public_base_url，就走自定义/CDN 域名；否则保持历史形态：
+/// endpoint + bucket + key。注意 endpoint 仍然只用于 S3 API，不要改成 CDN 域名。
 pub fn permanent_url(state: &AppState, storage_key: &str) -> String {
-    format!(
-        "{}/{}/{}",
-        state.config.s3.endpoint.trim_end_matches('/'),
-        state.config.s3.bucket,
-        storage_key
-    )
+    if let Some(base) = state
+        .config
+        .s3
+        .public_base_url
+        .as_deref()
+        .filter(|url| !url.trim().is_empty())
+    {
+        format!("{}/{}", base.trim_end_matches('/'), storage_key)
+    } else {
+        format!(
+            "{}/{}/{}",
+            state.config.s3.endpoint.trim_end_matches('/'),
+            state.config.s3.bucket,
+            storage_key
+        )
+    }
 }
 
 /// 把 OSS 对象 ACL 翻成 public-read（公开照片用）。

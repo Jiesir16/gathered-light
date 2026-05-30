@@ -7,6 +7,8 @@ pub struct SettingsResp {
     #[serde(default = "default_range")]
     pub range: String,
     pub hero: HeroCopy,
+    #[serde(default = "BrandEffect::default_effect", rename = "brandEffect")]
+    pub brand_effect: BrandEffect,
 }
 
 /// 前台首屏文案，可在管理端编辑。整体以一条 JSON 存进 site_settings 的 `hero` 键。
@@ -40,6 +42,20 @@ pub struct HeroLines {
     pub en: Vec<String>,
 }
 
+/// 顶部品牌「拾光集」三字的动态字内光源配置，整体以 JSON 存进 site_settings 的 `brand_effect` 键。
+#[derive(Clone, Debug, Deserialize, Serialize, Validate)]
+#[serde(rename_all = "camelCase")]
+pub struct BrandEffect {
+    #[validate(custom(function = "validate_hex_color"))]
+    pub color: String,
+    #[validate(range(min = 0.6, max = 2.4))]
+    pub glow_size: f32,
+    #[validate(range(min = 0.5, max = 1.8))]
+    pub glow_depth: f32,
+    #[validate(range(min = 0.5, max = 2.5))]
+    pub drift_speed: f32,
+}
+
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateThemeReq {
     #[validate(custom(function = "validate_theme"))]
@@ -57,6 +73,13 @@ pub struct UpdateHeroReq {
     #[validate(nested)]
     #[serde(flatten)]
     pub hero: HeroCopy,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateBrandEffectReq {
+    #[validate(nested)]
+    #[serde(flatten)]
+    pub brand_effect: BrandEffect,
 }
 
 pub fn validate_theme(value: &str) -> Result<(), ValidationError> {
@@ -98,6 +121,17 @@ fn validate_lines(value: &[String]) -> Result<(), ValidationError> {
     Ok(())
 }
 
+fn validate_hex_color(value: &str) -> Result<(), ValidationError> {
+    let Some(hex) = value.strip_prefix('#') else {
+        return Err(ValidationError::new("invalid color"));
+    };
+    if matches!(hex.len(), 3 | 6) && hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        Ok(())
+    } else {
+        Err(ValidationError::new("invalid color"))
+    }
+}
+
 fn default_range() -> String {
     "2025 - 2026".to_owned()
 }
@@ -124,6 +158,17 @@ impl HeroCopy {
                     "Small light, quiet pauses, and the weather of a day are saved for another afternoon.".to_owned(),
                 ],
             },
+        }
+    }
+}
+
+impl BrandEffect {
+    pub fn default_effect() -> Self {
+        Self {
+            color: "#fff3cf".to_owned(),
+            glow_size: 0.9,
+            glow_depth: 0.65,
+            drift_speed: 1.25,
         }
     }
 }

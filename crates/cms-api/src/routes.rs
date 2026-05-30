@@ -57,6 +57,10 @@ pub fn build(state: AppState) -> Router {
             patch(settings_handler::update_range),
         )
         .route("/admin/settings/hero", patch(settings_handler::update_hero))
+        .route(
+            "/admin/settings/brand-effect",
+            patch(settings_handler::update_brand_effect),
+        )
         .route("/admin/media/presign", post(media_handler::presign))
         .route("/admin/media/complete", post(media_handler::complete))
         .route(

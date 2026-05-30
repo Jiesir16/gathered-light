@@ -13,7 +13,18 @@ import { categories } from "../i18n";
 import { useLang } from "../hooks/useLang";
 import { usePhotos } from "../hooks/usePhotos";
 import type { Photo } from "../types";
-import { ArrowIcon, CloseIcon, DownloadIcon, EyeOffIcon, FitIcon, LockIcon, ZoomInIcon, ZoomOutIcon } from "./Icons";
+import {
+  ArrowIcon,
+  CloseIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  EyeOffIcon,
+  InfoIcon,
+  LockIcon,
+  RotateIcon,
+  ZoomInIcon,
+  ZoomOutIcon
+} from "./Icons";
 
 export function PublicGallery() {
   const { lang, setLang, t } = useLang();
@@ -21,7 +32,6 @@ export function PublicGallery() {
   const [category, setCategory] = useState("all");
   const [activeId, setActiveId] = useState<number | null>(null);
   const [unlocked, setUnlocked] = useState<Set<number>>(() => new Set());
-  const [siteRange, setSiteRange] = useState(() => document.documentElement.dataset.range || (t.range as string));
   const [hero, setHero] = useState<HeroCopy | null>(null);
   const masonryRef = useRef<HTMLElement | null>(null);
 
@@ -35,21 +45,12 @@ export function PublicGallery() {
   const activeIndex = filtered.findIndex((photo) => photo.id === activeId);
 
   useEffect(() => {
-    const range = document.documentElement.dataset.range;
-    setSiteRange(range?.trim() ? range : (t.range as string));
-  }, [t.range]);
-
-  useEffect(() => {
     let alive = true;
     settings
       .get()
       .then((resp) => {
         if (!alive) return;
         if (resp.hero) setHero(resp.hero);
-        const range = resp.range?.trim();
-        if (!range) return;
-        document.documentElement.dataset.range = range;
-        setSiteRange(range);
       })
       .catch(() => {});
     return () => {
@@ -97,25 +98,32 @@ export function PublicGallery() {
   }, [category, filtered]);
 
   return (
-    <div className="site-shell">
+    <div id="top" className="site-shell">
       <header className="topbar">
-        <a className="brand" href="/">
-          <span className="brand-mark">{t.siteName}</span>
-          <small>{t.siteSub}</small>
-        </a>
-        <nav className="category-nav" aria-label="categories">
-          {categories.map((item) => (
-            <button key={item.key} className={category === item.key ? "active" : ""} onClick={() => setCategory(item.key)}>
-              {item[lang]}
-            </button>
-          ))}
-        </nav>
-        <div className="top-actions">
-          <div className="lang-switch">
-            <button className={lang === "zh" ? "active" : ""} onClick={() => setLang("zh")}>中</button>
-            <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
+        <div className="topbar-inner">
+          <a className="brand" href="#top">
+            <span className="brand-mark">{t.siteName}</span>
+            <small>{t.siteSub}</small>
+          </a>
+          <nav className="category-nav" aria-label="categories">
+            {categories.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={category === item.key ? "active" : ""}
+                aria-pressed={category === item.key}
+                onClick={() => setCategory(item.key)}
+              >
+                {item[lang]}
+              </button>
+            ))}
+          </nav>
+          <div className="top-actions">
+            <div className="lang-switch">
+              <button className={lang === "zh" ? "active" : ""} onClick={() => setLang("zh")}>中</button>
+              <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>EN</button>
+            </div>
           </div>
-          {/* admin 入口已隐藏；通过 URL /admin 直接访问 */}
         </div>
       </header>
 
@@ -153,9 +161,17 @@ export function PublicGallery() {
       </main>
 
       <footer className="footer">
-        <div>
-          <strong>{t.siteName}</strong>
-          <span>{siteRange}</span>
+        <div className="footer-content">
+          <div className="footer-copy">
+            <strong className="footer-brand">{t.siteName}</strong>
+            <p>{t.footerNote as string}</p>
+          </div>
+          <nav className="footer-links" aria-label={lang === "zh" ? "外部链接" : "External links"}>
+            <a href="#top">Instagram</a>
+            <a href="#top">VSCO</a>
+            <a href="#top">Mail</a>
+          </nav>
+          <div className="footer-edition">© 2026 · {t.siteName}</div>
         </div>
       </footer>
 
@@ -264,7 +280,10 @@ function PhotoCard({
   return (
     <figure
       className="photo-card"
-      onClick={onOpen}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen();
+      }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
@@ -275,26 +294,27 @@ function PhotoCard({
       tabIndex={0}
     >
       <div className="photo-media" style={photoMediaStyle(photo, index)}>
-        <picture>
-          {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
-          <img
-            src={jpgSrc}
-            alt={photo.title[lang]}
-            className={hidden ? "obscured" : ""}
-            // 原始宽高让浏览器在加载前按比例预留版位，避免瀑布流回流抖动（CLS）
-            width={photo.width}
-            height={photo.height}
-            loading={priority ? "eager" : "lazy"}
-            decoding="async"
-            // data-loaded 触发淡入；缓存命中也会 fire onLoad，所以无 flicker
-            ref={(image) => {
-              image?.setAttribute("fetchpriority", fetchPriority);
-              if (image?.complete && image.naturalWidth > 0) image.dataset.loaded = "true";
-            }}
-            onLoad={(event) => { event.currentTarget.dataset.loaded = "true"; }}
-            onError={(event) => { event.currentTarget.dataset.error = "true"; }}
-          />
-        </picture>
+        {!hidden && (
+          <picture>
+            {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
+            <img
+              src={jpgSrc}
+              alt={photo.title[lang]}
+              // 原始宽高让浏览器在加载前按比例预留版位，避免瀑布流回流抖动（CLS）
+              width={photo.width}
+              height={photo.height}
+              loading={priority ? "eager" : "lazy"}
+              decoding="async"
+              // data-loaded 触发淡入；缓存命中也会 fire onLoad，所以无 flicker
+              ref={(image) => {
+                image?.setAttribute("fetchpriority", fetchPriority);
+                if (image?.complete && image.naturalWidth > 0) image.dataset.loaded = "true";
+              }}
+              onLoad={(event) => { event.currentTarget.dataset.loaded = "true"; }}
+              onError={(event) => { event.currentTarget.dataset.error = "true"; }}
+            />
+          </picture>
+        )}
         {hidden && (
           <div className="photo-shield">
             {photo.privacy === "private" ? <EyeOffIcon /> : <LockIcon />}
@@ -349,6 +369,9 @@ function Lightbox({
   const [downloading, setDownloading] = useState(false);
   const [imageQuality, setImageQuality] = useState<ImageQuality>("full");
   const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [showInfo, setShowInfo] = useState(false);
+  const [originalLoading, setOriginalLoading] = useState(false);
   const [offset, setOffset] = useState<ViewerOffset>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef<{
@@ -361,6 +384,9 @@ function Lightbox({
   useEffect(() => {
     setImageQuality("full");
     setScale(1);
+    setRotation(0);
+    setShowInfo(false);
+    setOriginalLoading(false);
     setOffset({ x: 0, y: 0 });
     setDragging(false);
     setPasscode("");
@@ -389,12 +415,26 @@ function Lightbox({
         });
       } else if (event.key === "0") {
         setScale(1);
+        setRotation(0);
         setOffset({ x: 0, y: 0 });
+      } else if (event.key === "r" || event.key === "R") {
+        setRotation((value) => value + 90);
+        setOffset({ x: 0, y: 0 });
+      } else if (event.key === "l" || event.key === "L") {
+        setRotation((value) => value - 90);
+        setOffset({ x: 0, y: 0 });
+      } else if (event.key === "i" || event.key === "I") {
+        setShowInfo((value) => !value);
       }
     };
 
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [onClose, onNext, onPrev, photo]);
 
   if (!photo) return null;
@@ -407,9 +447,17 @@ function Lightbox({
   const hasOriginal = canAccessOriginal && Boolean(originalUrl);
   const showingOriginal = imageQuality === "original" && hasOriginal;
   const imageUrl = showingOriginal && originalUrl ? originalUrl : fullUrl;
+  const categoryLabel = categories.find((item) => item.key === photo.cat)?.[lang] ?? photo.cat;
+  const privacyLabel = photo.privacy === "public"
+    ? t.public as string
+    : photo.privacy === "locked"
+      ? (unlocked ? t.unlocked as string : t.locked as string)
+      : t.private as string;
+  const detailRows = getPhotoDetailRows(photo, lang, categoryLabel, privacyLabel);
 
   const resetView = () => {
     setScale(1);
+    setRotation(0);
     setOffset({ x: 0, y: 0 });
     setDragging(false);
     dragRef.current = null;
@@ -425,8 +473,17 @@ function Lightbox({
 
   const switchQuality = () => {
     if (!hasOriginal) return;
-    setImageQuality((value) => value === "original" ? "full" : "original");
+    setImageQuality((value) => {
+      const next = value === "original" ? "full" : "original";
+      setOriginalLoading(next === "original");
+      return next;
+    });
     resetView();
+  };
+
+  const rotateBy = (degrees: -90 | 90) => {
+    setRotation((value) => value + degrees);
+    setOffset({ x: 0, y: 0 });
   };
 
   const onStageWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
@@ -513,91 +570,161 @@ function Lightbox({
   return (
     <div className="lightbox" onClick={onClose}>
       <button className="icon-button close" onClick={onClose} aria-label={t.close as string}><CloseIcon /></button>
-      {!privatePhoto && !locked && (
-        <div className="lightbox-actions" onClick={(event) => event.stopPropagation()}>
-          <button
-            className="icon-button"
-            onClick={() => zoomBy(-0.25)}
-            aria-label={t.zoomOut as string}
-            title={t.zoomOut as string}
-            disabled={scale <= minZoom}
-          >
-            <ZoomOutIcon size={18} />
-          </button>
-          <button
-            className="icon-button"
-            onClick={resetView}
-            aria-label={t.fitToScreen as string}
-            title={t.fitToScreen as string}
-          >
-            <FitIcon size={18} />
-          </button>
-          <button
-            className="icon-button"
-            onClick={() => zoomBy(0.25)}
-            aria-label={t.zoomIn as string}
-            title={t.zoomIn as string}
-            disabled={scale >= maxZoom}
-          >
-            <ZoomInIcon size={18} />
-          </button>
-          <button
-            className={`viewer-quality${showingOriginal ? " active" : ""}`}
-            onClick={switchQuality}
-            aria-label={showingOriginal ? t.viewFull as string : t.viewOriginal as string}
-            title={showingOriginal ? t.viewFull as string : t.viewOriginal as string}
-            disabled={!hasOriginal}
-          >
-            {showingOriginal ? (lang === "zh" ? "高清" : "Full") : (lang === "zh" ? "原图" : "Original")}
-          </button>
-          {hasOriginal && (
-            <button
-              className="icon-button"
-              onClick={(event) => void download(event)}
-              aria-label={t.download as string}
-              title={t.download as string}
-              disabled={downloading}
-            >
-              <DownloadIcon size={18} />
-            </button>
-          )}
-        </div>
-      )}
       <button className="icon-button prev" onClick={(event) => { event.stopPropagation(); onPrev(); }} aria-label={t.prev as string}><ArrowIcon direction="left" /></button>
       <button className="icon-button next" onClick={(event) => { event.stopPropagation(); onNext(); }} aria-label={t.next as string}><ArrowIcon /></button>
-      <div className={`lightbox-inner${privatePhoto || locked ? " locked-state" : ""}`} onClick={(event) => event.stopPropagation()}>
-        {privatePhoto ? (
-          <div className="locked-panel"><EyeOffIcon size={28} /><p>{t.privateOnly as string}</p></div>
-        ) : locked ? (
-          <div className="locked-panel">
-            <LockIcon size={28} />
-            <h2>{photo.title[lang]}</h2>
-            <p>{t.lockedHint as string}</p>
-            <input value={passcode} onChange={(event) => setPasscode(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void unlock()} placeholder={t.passcode as string} type="password" />
-            <button className="primary" onClick={() => void unlock()}>{t.unlock as string}</button>
-            {error && <span className="form-error">{error}</span>}
+      <div className="lightbox-inner" onClick={(event) => event.stopPropagation()}>
+        <div className="lightbox-viewer">
+          {privatePhoto ? (
+            <div className="locked-panel">
+              <EyeOffIcon size={20} />
+              <h2>{t.privateTitle as string}</h2>
+              <p>{t.privateOnly as string}</p>
+            </div>
+          ) : locked ? (
+            <div className="locked-panel">
+              <LockIcon size={18} />
+              <h2>{photo.title[lang]}</h2>
+              <p>{t.lockedHint as string}</p>
+              <div className="locked-panel-form">
+                <input value={passcode} onChange={(event) => setPasscode(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void unlock()} placeholder={t.passcode as string} type="password" />
+                <button className="primary" onClick={() => void unlock()}>{t.unlock as string}</button>
+                <p className="locked-panel-hint">{t.lockedPasscodeHint as string}</p>
+                {error && <span className="form-error">{error}</span>}
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`lightbox-stage${scale > minZoom ? " zoomed" : ""}${dragging ? " dragging" : ""}`}
+              onWheel={onStageWheel}
+              onDoubleClick={onStageDoubleClick}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerEnd}
+              onPointerCancel={onPointerEnd}
+            >
+              <img
+                // key 让切 prev/next 或切清晰度时 React remount img，重放 CSS 入场动画
+                key={`${photo.id}-${imageQuality}`}
+                className="lightbox-image"
+                src={imageUrl}
+                alt={photo.title[lang]}
+                decoding="async"
+                draggable={false}
+                ref={(image) => image?.setAttribute("fetchpriority", "high")}
+                onLoad={() => setOriginalLoading(false)}
+                onError={() => setOriginalLoading(false)}
+                style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) rotate(${rotation}deg) scale(${scale})` }}
+              />
+              {originalLoading && (
+                <div className="lightbox-loading" aria-live="polite">
+                  <span aria-hidden="true" />
+                  {t.loadingOriginal as string}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {!privatePhoto && !locked && (
+          <div className="lightbox-actions" onClick={(event) => event.stopPropagation()}>
+            <button
+              className="icon-button"
+              onClick={() => zoomBy(-0.25)}
+              aria-label={t.zoomOut as string}
+              title={t.zoomOut as string}
+              disabled={scale <= minZoom}
+            >
+              <ZoomOutIcon size={18} />
+            </button>
+            <button
+              className="viewer-reset"
+              onClick={resetView}
+              aria-label={t.fitToScreen as string}
+              title={t.fitToScreen as string}
+            >
+              {Math.round(scale * 100)}%
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => zoomBy(0.25)}
+              aria-label={t.zoomIn as string}
+              title={t.zoomIn as string}
+              disabled={scale >= maxZoom}
+            >
+              <ZoomInIcon size={18} />
+            </button>
+            <span className="lightbox-action-sep" aria-hidden="true" />
+            <button
+              className="icon-button"
+              onClick={() => rotateBy(-90)}
+              aria-label={t.rotateLeft as string}
+              title={t.rotateLeft as string}
+            >
+              <RotateIcon direction="left" size={17} />
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => rotateBy(90)}
+              aria-label={t.rotateRight as string}
+              title={t.rotateRight as string}
+            >
+              <RotateIcon size={17} />
+            </button>
+            <span className="lightbox-action-sep" aria-hidden="true" />
+            <button
+              className={`icon-button${showInfo ? " active" : ""}`}
+              onClick={() => setShowInfo((value) => !value)}
+              aria-label={t.photoInfo as string}
+              title={t.photoInfo as string}
+            >
+              <InfoIcon size={17} />
+            </button>
+            <button
+              className={`viewer-quality${showingOriginal ? " active" : ""}`}
+              onClick={switchQuality}
+              aria-label={showingOriginal ? t.viewFull as string : t.viewOriginal as string}
+              title={showingOriginal ? t.viewFull as string : t.viewOriginal as string}
+              disabled={!hasOriginal}
+            >
+              {showingOriginal ? (lang === "zh" ? "高清" : "Full") : (lang === "zh" ? "原图" : "Original")}
+            </button>
+            {hasOriginal && (
+              <button
+                className="icon-button"
+                onClick={(event) => void download(event)}
+                aria-label={t.download as string}
+                title={t.download as string}
+                disabled={downloading}
+              >
+                <DownloadIcon size={18} />
+              </button>
+            )}
+            <a
+              className="icon-button"
+              href={originalUrl ?? fullUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(event) => event.stopPropagation()}
+              aria-label={t.newTab as string}
+              title={t.newTab as string}
+            >
+              <ExternalLinkIcon size={17} />
+            </a>
           </div>
-        ) : (
-          <div
-            className={`lightbox-stage${scale > minZoom ? " zoomed" : ""}${dragging ? " dragging" : ""}`}
-            onWheel={onStageWheel}
-            onDoubleClick={onStageDoubleClick}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerEnd}
-            onPointerCancel={onPointerEnd}
-          >
-            <img
-              // key 让切 prev/next 或切清晰度时 React remount img，重放 CSS 入场动画
-              key={`${photo.id}-${imageQuality}`}
-              className="lightbox-image"
-              src={imageUrl}
-              alt={photo.title[lang]}
-              decoding="async"
-              fetchPriority="high"
-              draggable={false}
-              style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})` }}
-            />
+        )}
+        {showInfo && !privatePhoto && !locked && (
+          <div className="lightbox-info">
+            <div className="lightbox-info-heading">
+              <span>{t.photoInfo as string}</span>
+              <strong>{photo.caption?.[lang] || photo.alt_text?.[lang] || (t.noPhotoInfo as string)}</strong>
+            </div>
+            <div className="lightbox-info-grid">
+              {detailRows.map((row) => (
+                <div key={row.label}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         <div className="lightbox-caption">
@@ -605,11 +732,23 @@ function Lightbox({
             <strong>{photo.title[lang]}</strong>
             <span>{photo.loc[lang]} · {photo.date}</span>
           </div>
-          <span>
-            {categories.find((item) => item.key === photo.cat)?.[lang]} · {Math.round(scale * 100)}%
-          </span>
+          <div className="lightbox-caption-meta">
+            <span>{categoryLabel}</span>
+            <span>{privacyLabel}</span>
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+function getPhotoDetailRows(photo: Photo, lang: "zh" | "en", categoryLabel: string, privacyLabel: string) {
+  const tagNames = photo.tags?.map((tag) => tag.name[lang]).filter(Boolean).join(" / ");
+  return [
+    { label: lang === "zh" ? "分类" : "Category", value: categoryLabel },
+    { label: lang === "zh" ? "可见性" : "Privacy", value: privacyLabel },
+    { label: lang === "zh" ? "日期" : "Date", value: photo.date },
+    { label: "Slug", value: photo.slug || `#${photo.id}` },
+    { label: lang === "zh" ? "标签" : "Tags", value: tagNames || (lang === "zh" ? "暂无" : "None") },
+  ];
 }

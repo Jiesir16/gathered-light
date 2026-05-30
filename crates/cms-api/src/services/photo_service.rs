@@ -121,7 +121,8 @@ pub async fn create(state: &AppState, req: PhotoReq) -> AppResult<PhotoDto> {
     validate(&req)?;
     let privacy = req.privacy;
     let slug = create_slug(state, &req).await?;
-    let input = new_photo_from_req(slug, req, None);
+    let src_url = normalize_stored_src(&req.src);
+    let input = new_photo_from_req(slug, req, None, src_url);
     let id = photo_repo::create(&state.db, input).await.map_err(db_err)?;
     // worker 常在 photo 创建前就处理完 variants（那时查不到照片→默认按 private 传），
     // 这里按本张照片的真实 privacy 回填一次 OSS ACL，否则 public 照片的 variant 仍是私有 → 前端 403。
@@ -138,9 +139,17 @@ pub async fn update(state: &AppState, id: i64, req: PhotoReq) -> AppResult<Photo
         .await
         .map_err(db_err)?
         .ok_or(AppError::NotFound)?;
+    let variants_map = media_repo::find_variants_for_assets(&state.db, &[current.asset.id])
+        .await
+        .map_err(db_err)?;
+    let variants = variants_map
+        .get(&current.asset.id)
+        .map(Vec::as_slice)
+        .unwrap_or(&[]);
     let slug = update_slug(state, id, &req, &current.photo.slug).await?;
     let new_privacy = req.privacy;
-    let input = new_photo_from_req(slug, req, current.photo.passcode);
+    let src_url = normalize_update_src(&req.src, &current.asset, variants);
+    let input = new_photo_from_req(slug, req, current.photo.passcode, src_url);
     photo_repo::update(&state.db, id, input)
         .await
         .map_err(db_err)?;
@@ -705,13 +714,38 @@ fn object_key_from_stored_url(value: &str, prefixes: &[&str]) -> Option<String> 
     }
 }
 
+fn normalize_update_src(
+    src: &str,
+    current_asset: &media_assets::Model,
+    variants: &[media_variants::Model],
+) -> String {
+    if let Some(key) = object_key_from_stored_url(src, &["uploads/", "variants/"]) {
+        let is_current_display_url = key == current_asset.storage_key
+            || variants.iter().any(|variant| variant.storage_key == key);
+        if is_current_display_url {
+            return current_asset.storage_key.clone();
+        }
+        return key;
+    }
+    normalize_stored_src(src)
+}
+
+fn normalize_stored_src(src: &str) -> String {
+    object_key_from_stored_url(src, &["uploads/", "variants/"]).unwrap_or_else(|| src.to_owned())
+}
+
 /// 构造 NewPhoto。passcode 规则：
 /// - privacy != Locked：强制清空（公开/私密照片不需要口令）
 /// - privacy == Locked：
 ///   · req.passcode 非空 → 用它（前端传新口令）
 ///   · req.passcode 为 None 或空字符串 → fallback 用 `prev_passcode`（编辑时不动旧口令）
 ///   · 都没有 → 默认 "1234"（首次设 Locked 给个兜底，避免空口令）
-fn new_photo_from_req(slug: String, req: PhotoReq, prev_passcode: Option<String>) -> NewPhoto {
+fn new_photo_from_req(
+    slug: String,
+    req: PhotoReq,
+    prev_passcode: Option<String>,
+    src_url: String,
+) -> NewPhoto {
     let caption_zh = req.caption.as_ref().map(|i18n| i18n.zh.clone());
     let caption_en = req.caption.as_ref().map(|i18n| i18n.en.clone());
     let alt_text_zh = req.alt_text.as_ref().map(|i18n| i18n.zh.clone());
@@ -731,7 +765,7 @@ fn new_photo_from_req(slug: String, req: PhotoReq, prev_passcode: Option<String>
     NewPhoto {
         slug,
         category_slug: req.cat,
-        src_url: req.src,
+        src_url,
         mime_type: "image/jpeg".to_owned(),
         privacy: req.privacy,
         passcode,

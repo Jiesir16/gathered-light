@@ -212,3 +212,22 @@ export function ExternalLinkIcon({ size = 14, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function RotateIcon({ size = 16, direction = "right", ...props }: IconProps & { direction?: "left" | "right" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" style={{ transform: direction === "left" ? "scaleX(-1)" : undefined }} {...props}>
+      <path d="M21 12a9 9 0 1 1-3-6.7" />
+      <path d="M21 4v5h-5" />
+    </svg>
+  );
+}
+
+export function InfoIcon({ size = 16, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5" />
+      <path d="M12 7.5v.5" />
+    </svg>
+  );
+}
