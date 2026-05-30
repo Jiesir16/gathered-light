@@ -52,6 +52,11 @@ dotenvy   = "0.15"
 chrono = { version = "0.4", features = ["serde"] }
 uuid   = { version = "1", features = ["v4", "serde"] }
 
+# ── 自签名 SigV4（让 presign 直链走自定义域名，不暴露 COS 源站 host/桶名）──
+hmac = "0.12"
+sha2 = "0.10"
+hex  = "0.4"
+
 # ── persistence (会被 cms-entity / migrations 使用，cms-api 在 M1 接入) ──
 sea-orm = { version = "1", features = [
     "runtime-tokio-rustls",

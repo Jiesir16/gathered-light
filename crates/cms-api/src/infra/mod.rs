@@ -9,4 +9,5 @@
 //!   - `search.rs`  M5：Meilisearch 同步（可选）
 
 pub mod cache;
+pub mod cos_sign;
 pub mod jwt;

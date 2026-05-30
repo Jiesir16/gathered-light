@@ -10,8 +10,20 @@ use crate::{
     config::S3Cfg,
     dto::media_dto::{CompleteReq, CompleteResp, PresignReq, PresignResp},
     error::{AppError, AppResult},
+    infra::cos_sign,
     repositories::media_repo::{self, NewAsset},
 };
+
+/// 取配置里的自定义域名（去空白、非空才返回）。
+///
+/// 生产配了它，所有**前端可见**的 URL（公开直链 + 签名直链 + 直传 PUT）都收敛到这个域名，
+/// 既不暴露 COS 源站 host，也不出现桶名。dev（MinIO、未配）则回退到 aws-sdk 原逻辑。
+fn custom_base(cfg: &S3Cfg) -> Option<&str> {
+    cfg.public_base_url
+        .as_deref()
+        .map(str::trim)
+        .filter(|url| !url.is_empty())
+}
 
 pub async fn presign_upload(state: &AppState, req: PresignReq) -> AppResult<PresignResp> {
     if !req.mime_type.starts_with("image/") {
@@ -30,25 +42,47 @@ pub async fn presign_upload(state: &AppState, req: PresignReq) -> AppResult<Pres
         safe
     );
 
-    let presigning = PresigningConfig::expires_in(Duration::from_secs(900)).map_err(|error| {
-        tracing::error!(error = ?error, "build presigning config failed");
-        AppError::Internal("presign failed")
-    })?;
-    let request = state
-        .s3
-        .put_object()
-        .bucket(&state.config.s3.bucket)
-        .key(&storage_key)
-        .content_type(&req.mime_type)
-        .content_length(req.byte_size as i64)
-        .presigned(presigning)
-        .await
+    let cfg = &state.config.s3;
+    let upload_url = if let Some(base) = custom_base(cfg) {
+        // 自定义域名直传：签名直链同样走自定义域名，前端拿不到源站 host。
+        // 只签 host（不签 content-type/length）——大小与类型由 complete_upload 的 HEAD 校验兜底。
+        cos_sign::presign(
+            "PUT",
+            base,
+            &cfg.access_key,
+            &cfg.secret_key,
+            &cfg.region,
+            &storage_key,
+            900,
+            &[],
+        )
         .map_err(|error| {
-            tracing::error!(error = ?error, "presign failed");
+            tracing::error!(error = ?error, "custom-domain presign PUT failed");
             AppError::Internal("presign failed")
-        })?;
+        })?
+    } else {
+        // dev（MinIO）：回退到 aws-sdk 预签名。
+        let presigning =
+            PresigningConfig::expires_in(Duration::from_secs(900)).map_err(|error| {
+                tracing::error!(error = ?error, "build presigning config failed");
+                AppError::Internal("presign failed")
+            })?;
+        let request = state
+            .s3
+            .put_object()
+            .bucket(&cfg.bucket)
+            .key(&storage_key)
+            .content_type(&req.mime_type)
+            .content_length(req.byte_size as i64)
+            .presigned(presigning)
+            .await
+            .map_err(|error| {
+                tracing::error!(error = ?error, "presign failed");
+                AppError::Internal("presign failed")
+            })?;
+        request.uri().to_string()
+    };
 
-    let upload_url = request.uri().to_string();
     let public_url = permanent_url(state, &storage_key);
 
     let mut headers = BTreeMap::new();
@@ -116,6 +150,26 @@ pub async fn presign_get(
     key: &str,
     ttl_secs: u64,
 ) -> AppResult<String> {
+    // 生产：配了自定义域名 → 自己按 SigV4 签，签名直链也走自定义域名，
+    // 不向前端暴露 COS 源站 host / 桶名（见 infra::cos_sign）。
+    if let Some(base) = custom_base(cfg) {
+        return cos_sign::presign(
+            "GET",
+            base,
+            &cfg.access_key,
+            &cfg.secret_key,
+            &cfg.region,
+            key,
+            ttl_secs,
+            &[("response-content-disposition", "inline")],
+        )
+        .map_err(|error| {
+            tracing::error!(error = ?error, key, "custom-domain presign GET failed");
+            AppError::Internal("presign GET failed")
+        });
+    }
+
+    // dev（MinIO，无自定义域名）：回退到 aws-sdk 预签名。
     let presigning =
         PresigningConfig::expires_in(Duration::from_secs(ttl_secs)).map_err(|error| {
             tracing::error!(error = ?error, key, "build GET presigning config failed");
@@ -156,13 +210,7 @@ fn sanitize_file_name(input: &str) -> String {
 /// 如果配置了 public_base_url，就走自定义/CDN 域名；否则保持历史形态：
 /// endpoint + bucket + key。注意 endpoint 仍然只用于 S3 API，不要改成 CDN 域名。
 pub fn permanent_url(state: &AppState, storage_key: &str) -> String {
-    if let Some(base) = state
-        .config
-        .s3
-        .public_base_url
-        .as_deref()
-        .filter(|url| !url.trim().is_empty())
-    {
+    if let Some(base) = custom_base(&state.config.s3) {
         format!("{}/{}", base.trim_end_matches('/'), storage_key)
     } else {
         format!(

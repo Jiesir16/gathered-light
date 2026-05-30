@@ -192,7 +192,7 @@ sudo certbot --nginx -d yourdomain.com --redirect
 - `APP_BIND_ADDR=127.0.0.1:8081` 只绑 loopback，由 nginx 反代
 - `APP_JWT__SECRET=$(openssl rand -base64 48)` 必须用强随机
 - 对象存储用腾讯云 COS / AWS S3，**endpoint 写区域域名，不要带桶名**
-  - 例：`https://cos.ap-beijing.myqcloud.com`，不是 `https://your-bucket.cos.ap-beijing.myqcloud.com`
+  - 例：`https://cos.<region>.myqcloud.com`，不是 `https://your-bucket.cos.<region>.myqcloud.com`
 - COS 桶必须配置 CORS，允许你的前端域名 PUT / GET / POST
 
 ---

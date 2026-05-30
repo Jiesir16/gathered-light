@@ -12,8 +12,11 @@ url       = "redis://localhost:6379/0"
 pool_size = 8
 
 [s3]
+# ⚠ endpoint 必须地域级、不带桶名（对：cos.<region>.myqcloud.com / 错：<bucket>.cos...）。
+# 带桶名 + force_path_style 会把桶名写进对象 key，换自定义域名后干净路径 403。详见 .env.example。
 endpoint         = "http://localhost:9000"
-public_base_url  = ""                       # 生产可填 CDN/自定义域名，例如 https://img.example.com
+# 自定义域名：填了之后 public 直链 / 签名链 / 直传 PUT 全走它，前端看不到 COS 源站 host 与桶名。
+public_base_url  = ""                       # 生产例：https://media.example.com
 region           = "us-east-1"
 bucket           = "gathered-light"
 upload_max_bytes = 26214400      # 25 MiB

@@ -666,6 +666,26 @@ async fn sync_variants_acl_for_photo(
     Ok(())
 }
 
+/// 一次性把所有 photo 的 OSS ACL 按各自 privacy 重刷一遍。
+///
+/// 迁移/修桶后专用：服务端 COPY 出来的新对象默认 private，public 照片的 variants 必须重新
+/// 放成 public-read，否则前端公开直链会 403。复用单张照片的 [`sync_variants_acl_for_photo`]，
+/// 逐张失败只记日志、不中断整批。
+pub async fn resync_all_acl(state: &AppState) -> AppResult<usize> {
+    let photos = photo_repo::list_admin(&state.db, None)
+        .await
+        .map_err(db_err)?;
+    let total = photos.len();
+    for full in &photos {
+        let privacy = Privacy::from_str(&full.photo.privacy).unwrap_or(Privacy::Private);
+        if let Err(error) = sync_variants_acl_for_photo(state, full.photo.id, privacy).await {
+            tracing::warn!(error = ?error, photo_id = full.photo.id, "resync ACL failed");
+        }
+    }
+    tracing::info!(total, "resync ACL for all photos done");
+    Ok(total)
+}
+
 fn db_err(error: DbErr) -> AppError {
     match error {
         DbErr::RecordNotFound(_) => AppError::NotFound,

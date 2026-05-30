@@ -19,6 +19,10 @@ path = "src/bin/seed_demo.rs"
 name = "seed_admin"
 path = "src/bin/seed_admin.rs"
 
+[[bin]]
+name = "migrate_cos_keys"
+path = "src/bin/migrate_cos_keys.rs"
+
 [lib]
 path = "src/lib.rs"
 
@@ -67,6 +71,9 @@ image.workspace = true
 # ── misc ────────────────────────────────────────────────────
 chrono.workspace = true
 uuid.workspace   = true
+hmac.workspace   = true
+sha2.workspace   = true
+hex.workspace    = true
 
 [dev-dependencies]
 migrations.workspace = true
