@@ -56,6 +56,13 @@ export type SiteSettings = {
   brandEffect: BrandEffect;
 };
 
+export type RepairResponse = {
+  objects_copied: number;
+  assets_fixed: number;
+  variants_fixed: number;
+  photos_resynced: number;
+};
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -178,7 +185,9 @@ const adminPhotoApi = {
   bulkPrivacy: (req: BulkPrivacyReq) =>
     request<BulkResp>("/api/v1/admin/photos/bulk/privacy", { method: "POST", body: req }),
   bulkSetTags: (req: BulkTagsReq) =>
-    request<BulkResp>("/api/v1/admin/photos/bulk/tags", { method: "POST", body: req })
+    request<BulkResp>("/api/v1/admin/photos/bulk/tags", { method: "POST", body: req }),
+  repairLegacy: () =>
+    request<RepairResponse>("/api/v1/admin/photos/repair-legacy", { method: "POST" })
 };
 
 export const api = {

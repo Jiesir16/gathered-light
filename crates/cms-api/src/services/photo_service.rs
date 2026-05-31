@@ -10,6 +10,7 @@ use validator::Validate;
 
 use crate::{
     bootstrap::AppState,
+    dto::media_dto::RepairResp,
     dto::photo_dto::{
         BulkDeleteReq, BulkPrivacyReq, BulkResp, BulkTagMode, BulkTagsReq, CategoryDto, I18nText,
         PhotoDto, PhotoListQuery, PhotoListResp, PhotoQuery, PhotoReq, PhotoVariants, PrivacyReq,
@@ -666,24 +667,54 @@ async fn sync_variants_acl_for_photo(
     Ok(())
 }
 
-/// 一次性把所有 photo 的 OSS ACL 按各自 privacy 重刷一遍。
+/// 修复历史「桶名双写」数据（admin「修复历史数据」按钮触发）。
 ///
-/// 迁移/修桶后专用：服务端 COPY 出来的新对象默认 private，public 照片的 variants 必须重新
-/// 放成 public-read，否则前端公开直链会 403。复用单张照片的 [`sync_variants_acl_for_photo`]，
-/// 逐张失败只记日志、不中断整批。
-pub async fn resync_all_acl(state: &AppState) -> AppResult<usize> {
-    let photos = photo_repo::list_admin(&state.db, None)
+/// 三步：①COS 把旧对象 `{bucket}/...` 服务端复制成干净 key；②DB 去掉 storage_key 的桶名前缀；
+/// ③按各 photo 的 privacy 重刷 variants ACL（COPY 出来的新对象默认 private）。复制不删旧对象、
+/// 留作备份。要求 `APP_S3__ENDPOINT` 已是地域级（不带桶名），否则先返回错误提示、不动数据。
+pub async fn repair_legacy_keys(state: &AppState) -> AppResult<RepairResp> {
+    let bucket = state.config.s3.bucket.as_str();
+
+    // 守卫：endpoint 还带桶名（host 以「桶名.」开头）就别跑，否则 list/copy 会再叠一层桶名搬错。
+    let host = state.config.s3.endpoint.split("://").nth(1).unwrap_or("");
+    if host.starts_with(&format!("{bucket}.")) {
+        return Err(AppError::Validation(
+            "S3 endpoint 仍带桶名，请先把 APP_S3__ENDPOINT 改成地域级（cos.<region>.myqcloud.com）并重启服务，再修复历史数据。"
+                .to_owned(),
+        ));
+    }
+
+    // ① COS：旧对象 `{bucket}/...` 服务端复制成干净 key（复制、不删，留作备份）
+    let objects_copied = media_service::copy_legacy_objects(&state.s3, bucket).await?;
+    // ② DB：去掉 storage_key 的桶名前缀
+    let (assets_fixed, variants_fixed) = media_repo::strip_bucket_prefix(&state.db, bucket)
         .await
         .map_err(db_err)?;
-    let total = photos.len();
+    // ③ ACL：COPY 出来的新对象默认 private，按各 photo 的 privacy 重刷一遍
+    let photos = photo_repo::list_admin(&state.db, None).await.map_err(db_err)?;
+    let photos_resynced = photos.len();
     for full in &photos {
         let privacy = Privacy::from_str(&full.photo.privacy).unwrap_or(Privacy::Private);
         if let Err(error) = sync_variants_acl_for_photo(state, full.photo.id, privacy).await {
-            tracing::warn!(error = ?error, photo_id = full.photo.id, "resync ACL failed");
+            tracing::warn!(error = ?error, photo_id = full.photo.id, "repair: resync ACL failed");
         }
     }
-    tracing::info!(total, "resync ACL for all photos done");
-    Ok(total)
+
+    cache::invalidate_prefix(&state.redis, "cms:photo:list:*").await;
+
+    tracing::info!(
+        objects_copied,
+        assets_fixed,
+        variants_fixed,
+        photos_resynced,
+        "legacy key repair done"
+    );
+    Ok(RepairResp {
+        objects_copied,
+        assets_fixed,
+        variants_fixed,
+        photos_resynced,
+    })
 }
 
 fn db_err(error: DbErr) -> AppError {

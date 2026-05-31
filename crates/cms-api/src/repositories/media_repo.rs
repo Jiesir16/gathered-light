@@ -137,6 +137,30 @@ pub async fn find_variants_for_assets(
     Ok(by_asset)
 }
 
+/// 去掉历史「桶名双写」留下的 storage_key 前缀（`{bucket}/`），返回
+/// (media_assets 改动行数, media_variants 改动行数)。只动带前缀的行，外链/已干净的不碰。
+pub async fn strip_bucket_prefix(db: &DatabaseConnection, bucket: &str) -> Result<(u64, u64), DbErr> {
+    let prefix = format!("{bucket}/");
+    let like = format!("{prefix}%");
+    let cut = (prefix.len() + 1) as i64; // Postgres substr 从 1 开始计
+    let backend = db.get_database_backend();
+    let mut affected = [0u64; 2];
+    for (i, table) in ["media_assets", "media_variants"].into_iter().enumerate() {
+        let sql = format!(
+            "UPDATE {table} SET storage_key = substr(storage_key, $1) WHERE storage_key LIKE $2"
+        );
+        let res = db
+            .execute(Statement::from_sql_and_values(
+                backend,
+                &sql,
+                [cut.into(), like.clone().into()],
+            ))
+            .await?;
+        affected[i] = res.rows_affected();
+    }
+    Ok((affected[0], affected[1]))
+}
+
 pub async fn count_by_status(db: &DatabaseConnection) -> Result<MediaStats, DbErr> {
     // SELECT status, count(*) FROM media_assets GROUP BY status
     let sql = r#"

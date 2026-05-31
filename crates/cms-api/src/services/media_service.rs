@@ -252,6 +252,53 @@ pub async fn set_object_private(s3: &S3Client, bucket: &str, key: &str) -> AppRe
     Ok(())
 }
 
+/// 把「桶名双写」的旧对象（key 形如 `{bucket}/variants/...`）服务端复制成干净 key
+/// （`variants/...`）。复制不删除：旧对象留作备份，站点确认正常后再去 COS 控制台清理。
+///
+/// ⚠ 要求 S3 client 用**地域级** endpoint（`cos.<region>.myqcloud.com`），否则寻址会再叠
+/// 一层桶名，搬错位置。调用方（[`crate::services::photo_service::repair_legacy_keys`]）已做守卫。
+pub async fn copy_legacy_objects(s3: &S3Client, bucket: &str) -> AppResult<usize> {
+    let prefix = format!("{bucket}/");
+    let mut copied = 0usize;
+    let mut token: Option<String> = None;
+    loop {
+        let mut req = s3.list_objects_v2().bucket(bucket).prefix(&prefix);
+        if let Some(t) = &token {
+            req = req.continuation_token(t);
+        }
+        let resp = req.send().await.map_err(|error| {
+            tracing::error!(error = ?error, "list legacy objects failed");
+            AppError::Internal("list legacy objects failed")
+        })?;
+        for obj in resp.contents() {
+            let Some(old_key) = obj.key() else { continue };
+            let Some(clean_key) = old_key.strip_prefix(&prefix) else {
+                continue;
+            };
+            if clean_key.is_empty() {
+                continue; // 前缀本身（目录占位），跳过
+            }
+            s3.copy_object()
+                .bucket(bucket)
+                .copy_source(format!("{bucket}/{old_key}"))
+                .key(clean_key)
+                .send()
+                .await
+                .map_err(|error| {
+                    tracing::error!(error = ?error, old_key, "copy legacy object failed");
+                    AppError::Internal("copy legacy object failed")
+                })?;
+            copied += 1;
+        }
+        match resp.next_continuation_token() {
+            Some(t) => token = Some(t.to_owned()),
+            None => break,
+        }
+    }
+    tracing::info!(copied, "legacy objects copied to clean keys");
+    Ok(copied)
+}
+
 fn db_err(error: DbErr) -> AppError {
     tracing::error!(error = ?error, "database operation failed");
     AppError::Internal("database operation failed")

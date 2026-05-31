@@ -19,10 +19,6 @@ path = "src/bin/seed_demo.rs"
 name = "seed_admin"
 path = "src/bin/seed_admin.rs"
 
-[[bin]]
-name = "migrate_cos_keys"
-path = "src/bin/migrate_cos_keys.rs"
-
 [lib]
 path = "src/lib.rs"
 

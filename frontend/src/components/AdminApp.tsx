@@ -183,6 +183,7 @@ export function AdminApp() {
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [recoveringId, setRecoveringId] = useState<number | null>(null);
+  const [repairing, setRepairing] = useState(false);
   const debouncedSearch = useDebounce(search, 300);
   const pageSize = 20;
 
@@ -320,6 +321,24 @@ export function AdminApp() {
     await loadPhotos();
   };
 
+  const repairLegacy = async () => {
+    if (!window.confirm(lang === "zh"
+      ? "修复历史数据？会把旧的“桶名双写”对象搬到干净 key 并按隐私重刷权限，可能耗时几十秒。"
+      : "Repair legacy data? Rewrites old bucket-doubled objects to clean keys and re-applies ACLs.")) return;
+    setRepairing(true);
+    setError(null);
+    try {
+      const r = await api.adminPhotos.repairLegacy();
+      setNotice(`${t.repairLegacyDone}: ${r.objects_copied} obj / ${r.assets_fixed + r.variants_fixed} keys / ${r.photos_resynced} photos`);
+      setPage(1);
+      await loadPhotos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Repair failed");
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   const signOut = async () => {
     await logout();
     setAuthed(false);
@@ -420,6 +439,7 @@ export function AdminApp() {
           <div className="page-header-actions">
             {activeTab === "photos" && (
               <>
+                <button className="secondary" onClick={() => void repairLegacy()} disabled={repairing} title={lang === "zh" ? "修复历史“桶名双写”数据" : "Repair legacy bucket-doubled data"}>{repairing ? "…" : t.repairLegacy}</button>
                 <button className="secondary" onClick={() => void reset()}>{t.reset}</button>
                 <button className="primary" onClick={() => setCreating(true)}><PlusIcon /> {t.newPhoto}</button>
               </>

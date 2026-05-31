@@ -81,6 +81,10 @@ pub fn build(state: AppState) -> Router {
         )
         .route("/admin/photos/reset", post(photo_handler::reset))
         .route(
+            "/admin/photos/repair-legacy",
+            post(photo_handler::repair_legacy),
+        )
+        .route(
             "/admin/photos/:id",
             put(photo_handler::update).delete(photo_handler::delete),
         )

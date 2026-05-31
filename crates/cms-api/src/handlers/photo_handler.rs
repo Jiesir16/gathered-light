@@ -6,6 +6,7 @@ use axum::{
 
 use crate::{
     bootstrap::AppState,
+    dto::media_dto::RepairResp,
     dto::photo_dto::{
         BulkDeleteReq, BulkPrivacyReq, BulkResp, BulkTagsReq, PhotoDto, PhotoListQuery,
         PhotoListResp, PhotoQuery, PhotoReq, PrivacyReq, UnlockReq, UnlockResp,
@@ -57,6 +58,11 @@ pub async fn recover_urls(
     Path(id): Path<i64>,
 ) -> AppResult<Json<PhotoDto>> {
     Ok(Json(photo_service::recover_urls(&state, id).await?))
+}
+
+/// 修复历史「桶名双写」数据（admin「修复历史数据」按钮）。
+pub async fn repair_legacy(State(state): State<AppState>) -> AppResult<Json<RepairResp>> {
+    Ok(Json(photo_service::repair_legacy_keys(&state).await?))
 }
 
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
