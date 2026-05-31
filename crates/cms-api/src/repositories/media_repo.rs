@@ -139,7 +139,10 @@ pub async fn find_variants_for_assets(
 
 /// 去掉历史「桶名双写」留下的 storage_key 前缀（`{bucket}/`），返回
 /// (media_assets 改动行数, media_variants 改动行数)。只动带前缀的行，外链/已干净的不碰。
-pub async fn strip_bucket_prefix(db: &DatabaseConnection, bucket: &str) -> Result<(u64, u64), DbErr> {
+pub async fn strip_bucket_prefix(
+    db: &DatabaseConnection,
+    bucket: &str,
+) -> Result<(u64, u64), DbErr> {
     let prefix = format!("{bucket}/");
     let like = format!("{prefix}%");
     let cut = (prefix.len() + 1) as i64; // Postgres substr 从 1 开始计

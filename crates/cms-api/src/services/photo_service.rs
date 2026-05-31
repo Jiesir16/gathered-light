@@ -683,7 +683,9 @@ pub async fn repair_legacy_keys(state: &AppState) -> AppResult<RepairResp> {
         .await
         .map_err(db_err)?;
     // ③ ACL：COPY 出来的新对象默认 private，按各 photo 的 privacy 重刷一遍
-    let photos = photo_repo::list_admin(&state.db, None).await.map_err(db_err)?;
+    let photos = photo_repo::list_admin(&state.db, None)
+        .await
+        .map_err(db_err)?;
     let photos_resynced = photos.len();
     for full in &photos {
         let privacy = Privacy::from_str(&full.photo.privacy).unwrap_or(Privacy::Private);

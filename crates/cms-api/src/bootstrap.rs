@@ -86,6 +86,17 @@ fn normalize_endpoint(endpoint: &str, bucket: &str) -> String {
     endpoint.replace(&format!("://{bucket}."), "://")
 }
 
+fn is_production_env() -> bool {
+    std::env::var("APP_ENV").as_deref() == Ok("production")
+}
+
+fn is_local_s3_endpoint(endpoint: &str) -> bool {
+    let endpoint = endpoint.to_ascii_lowercase();
+    endpoint.starts_with("http://localhost:")
+        || endpoint.starts_with("http://127.0.0.1:")
+        || endpoint.starts_with("http://[::1]:")
+}
+
 async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
     let creds = Credentials::new(
         cfg.access_key.clone(),
@@ -100,7 +111,7 @@ async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
     }
     let aws_cfg = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(cfg.region.clone()))
-        .endpoint_url(endpoint)
+        .endpoint_url(endpoint.clone())
         .credentials_provider(SharedCredentialsProvider::new(creds))
         .load()
         .await;
@@ -113,7 +124,7 @@ async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
         Ok(_) => tracing::info!(bucket = %cfg.bucket, "s3 bucket exists"),
         Err(error) => {
             let service_error = error.into_service_error();
-            if service_error.is_not_found() {
+            if service_error.is_not_found() && is_local_s3_endpoint(&endpoint) {
                 client
                     .create_bucket()
                     .bucket(&cfg.bucket)
@@ -121,6 +132,14 @@ async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
                     .await
                     .map_err(|error| anyhow::anyhow!("create bucket: {error}"))?;
                 tracing::info!(bucket = %cfg.bucket, "s3 bucket created");
+            } else if is_production_env() {
+                tracing::warn!(
+                    bucket = %cfg.bucket,
+                    endpoint = %endpoint,
+                    region = %cfg.region,
+                    error = ?service_error,
+                    "s3 bucket startup probe failed; continuing because production startup must not depend on HeadBucket"
+                );
             } else {
                 anyhow::bail!("head_bucket failed: {service_error}");
             }
@@ -132,12 +151,15 @@ async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_endpoint;
+    use super::{is_local_s3_endpoint, normalize_endpoint};
 
     #[test]
     fn strips_bucket_subdomain_to_region_level() {
         assert_eq!(
-            normalize_endpoint("https://my-bucket-1300000000.cos.ap-x.myqcloud.com", "my-bucket-1300000000"),
+            normalize_endpoint(
+                "https://my-bucket-1300000000.cos.ap-x.myqcloud.com",
+                "my-bucket-1300000000"
+            ),
             "https://cos.ap-x.myqcloud.com"
         );
     }
@@ -154,5 +176,15 @@ mod tests {
             normalize_endpoint("http://localhost:9000", "gathered-light"),
             "http://localhost:9000"
         );
+    }
+
+    #[test]
+    fn detects_local_s3_endpoint_for_bucket_auto_create() {
+        assert!(is_local_s3_endpoint("http://localhost:9000"));
+        assert!(is_local_s3_endpoint("http://127.0.0.1:9000"));
+        assert!(!is_local_s3_endpoint(
+            "https://cos.ap-guangzhou.myqcloud.com"
+        ));
+        assert!(!is_local_s3_endpoint("https://media.example.com"));
     }
 }

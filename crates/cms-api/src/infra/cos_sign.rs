@@ -105,7 +105,10 @@ fn canonicalize(
 ) -> (String, String) {
     let mut params: Vec<(String, String)> = vec![
         ("X-Amz-Algorithm".to_owned(), "AWS4-HMAC-SHA256".to_owned()),
-        ("X-Amz-Credential".to_owned(), format!("{access_key}/{scope}")),
+        (
+            "X-Amz-Credential".to_owned(),
+            format!("{access_key}/{scope}"),
+        ),
         ("X-Amz-Date".to_owned(), amz_date.to_owned()),
         ("X-Amz-Expires".to_owned(), expires_secs.to_string()),
         ("X-Amz-SignedHeaders".to_owned(), "host".to_owned()),
@@ -249,7 +252,10 @@ mod tests {
         // 路径就是干净 key，没有被塞进桶名那一段
         assert_eq!(path, "/variants/1/webp_900.webp");
         assert!(url.contains("&X-Amz-Signature="));
-        assert!(!url.contains("myqcloud"), "must not leak any COS origin host");
+        assert!(
+            !url.contains("myqcloud"),
+            "must not leak any COS origin host"
+        );
     }
 
     #[test]
