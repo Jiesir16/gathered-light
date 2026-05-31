@@ -76,6 +76,16 @@ impl AppState {
     }
 }
 
+/// 把误含桶名子域的 endpoint 规整成地域级：`https://{bucket}.cos.x` → `https://cos.x`。
+/// 不含该前缀（已是地域级 / MinIO 等）则原样返回。
+///
+/// 根因：endpoint 带桶名 + `force_path_style(true)` 会把桶名既放进 host 又拼进 path，
+/// COS 把整段 path 当 key → 对象 key 被双写成 `{bucket}/...`。规整后桶名只出现一次，
+/// 上传/HEAD/ACL/复制全部寻址干净 key，与自定义域名直链一致。
+fn normalize_endpoint(endpoint: &str, bucket: &str) -> String {
+    endpoint.replace(&format!("://{bucket}."), "://")
+}
+
 async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
     let creds = Credentials::new(
         cfg.access_key.clone(),
@@ -84,9 +94,13 @@ async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
         None,
         "gathered-light-static",
     );
+    let endpoint = normalize_endpoint(&cfg.endpoint, &cfg.bucket);
+    if endpoint != cfg.endpoint {
+        tracing::info!(raw = %cfg.endpoint, used = %endpoint, "s3 endpoint 规整为地域级（剥掉桶名子域）");
+    }
     let aws_cfg = aws_config::defaults(BehaviorVersion::latest())
         .region(Region::new(cfg.region.clone()))
-        .endpoint_url(cfg.endpoint.clone())
+        .endpoint_url(endpoint)
         .credentials_provider(SharedCredentialsProvider::new(creds))
         .load()
         .await;
@@ -114,4 +128,31 @@ async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
     }
 
     Ok(client)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_endpoint;
+
+    #[test]
+    fn strips_bucket_subdomain_to_region_level() {
+        assert_eq!(
+            normalize_endpoint("https://my-bucket-1300000000.cos.ap-x.myqcloud.com", "my-bucket-1300000000"),
+            "https://cos.ap-x.myqcloud.com"
+        );
+    }
+
+    #[test]
+    fn leaves_region_level_and_minio_untouched() {
+        // 已是地域级：原样
+        assert_eq!(
+            normalize_endpoint("https://cos.ap-x.myqcloud.com", "my-bucket-1300000000"),
+            "https://cos.ap-x.myqcloud.com"
+        );
+        // dev MinIO：原样
+        assert_eq!(
+            normalize_endpoint("http://localhost:9000", "gathered-light"),
+            "http://localhost:9000"
+        );
+    }
 }

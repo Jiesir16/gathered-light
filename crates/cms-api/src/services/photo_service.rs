@@ -675,15 +675,7 @@ async fn sync_variants_acl_for_photo(
 pub async fn repair_legacy_keys(state: &AppState) -> AppResult<RepairResp> {
     let bucket = state.config.s3.bucket.as_str();
 
-    // 守卫：endpoint 还带桶名（host 以「桶名.」开头）就别跑，否则 list/copy 会再叠一层桶名搬错。
-    let host = state.config.s3.endpoint.split("://").nth(1).unwrap_or("");
-    if host.starts_with(&format!("{bucket}.")) {
-        return Err(AppError::Validation(
-            "S3 endpoint 仍带桶名，请先把 APP_S3__ENDPOINT 改成地域级（cos.<region>.myqcloud.com）并重启服务，再修复历史数据。"
-                .to_owned(),
-        ));
-    }
-
+    // endpoint 在 bootstrap::init_s3 里已规整为地域级，state.s3 寻址的就是干净 key，无需守卫。
     // ① COS：旧对象 `{bucket}/...` 服务端复制成干净 key（复制、不删，留作备份）
     let objects_copied = media_service::copy_legacy_objects(&state.s3, bucket).await?;
     // ② DB：去掉 storage_key 的桶名前缀
