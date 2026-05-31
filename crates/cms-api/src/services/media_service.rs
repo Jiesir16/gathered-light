@@ -108,8 +108,13 @@ pub async fn complete_upload(state: &AppState, req: CompleteReq) -> AppResult<Co
         .send()
         .await
         .map_err(|error| {
-            tracing::warn!(error = ?error, key = %req.storage_key, "head_object failed");
-            AppError::NotFound
+            let service_error = error.into_service_error();
+            tracing::warn!(error = ?service_error, key = %req.storage_key, "head_object failed");
+            if service_error.is_not_found() {
+                AppError::NotFound
+            } else {
+                AppError::Internal("head object failed")
+            }
         })?;
 
     let mime_type = head

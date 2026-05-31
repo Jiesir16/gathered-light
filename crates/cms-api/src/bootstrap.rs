@@ -79,9 +79,8 @@ impl AppState {
 /// 把误含桶名子域的 endpoint 规整成地域级：`https://{bucket}.cos.x` → `https://cos.x`。
 /// 不含该前缀（已是地域级 / MinIO 等）则原样返回。
 ///
-/// 根因：endpoint 带桶名 + `force_path_style(true)` 会把桶名既放进 host 又拼进 path，
-/// COS 把整段 path 当 key → 对象 key 被双写成 `{bucket}/...`。规整后桶名只出现一次，
-/// 上传/HEAD/ACL/复制全部寻址干净 key，与自定义域名直链一致。
+/// endpoint 必须是地域级；寻址风格由 `is_local_s3_endpoint` 决定：
+/// 本地 S3 兼容服务走 path-style，生产 COS 走 virtual-hosted style。
 fn normalize_endpoint(endpoint: &str, bucket: &str) -> String {
     endpoint.replace(&format!("://{bucket}."), "://")
 }
@@ -116,7 +115,7 @@ async fn init_s3(cfg: &S3Cfg) -> anyhow::Result<S3Client> {
         .load()
         .await;
     let s3_cfg = aws_sdk_s3::config::Builder::from(&aws_cfg)
-        .force_path_style(true)
+        .force_path_style(is_local_s3_endpoint(&endpoint))
         .build();
     let client = S3Client::from_conf(s3_cfg);
 
