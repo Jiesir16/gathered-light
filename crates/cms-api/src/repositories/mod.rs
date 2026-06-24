@@ -14,6 +14,7 @@
 pub mod category_repo;
 pub mod media_repo;
 pub mod photo_repo;
+pub mod post_repo;
 pub mod settings_repo;
 pub mod tag_repo;
 pub mod user_repo;

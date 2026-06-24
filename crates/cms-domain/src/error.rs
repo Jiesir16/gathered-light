@@ -7,4 +7,10 @@ pub enum DomainError {
 
     #[error("invalid locale: {0}")]
     InvalidLocale(String),
+
+    #[error("invalid post type: {0}")]
+    InvalidPostType(String),
+
+    #[error("invalid post status: {0}")]
+    InvalidPostStatus(String),
 }

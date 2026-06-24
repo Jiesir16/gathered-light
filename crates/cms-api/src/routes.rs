@@ -25,7 +25,7 @@ use tower_http::{
 use crate::bootstrap::AppState;
 use crate::handlers::{
     auth_handler, category_handler, dashboard_handler, health_handler, media_handler,
-    photo_handler, settings_handler, tag_handler, user_handler,
+    photo_handler, post_handler, settings_handler, tag_handler, user_handler,
 };
 use crate::middleware::auth::jwt_guard;
 
@@ -41,7 +41,9 @@ pub fn build(state: AppState) -> Router {
         .route("/categories", get(category_handler::list))
         .route("/tags", get(tag_handler::list_public))
         .route("/photos", get(photo_handler::list_public))
-        .route("/photos/:id/unlock", post(photo_handler::unlock));
+        .route("/photos/:id/unlock", post(photo_handler::unlock))
+        .route("/posts", get(post_handler::list_public))
+        .route("/posts/:slug", get(post_handler::get_public));
 
     let protected_api = Router::new()
         .route("/auth/logout", post(auth_handler::logout))
@@ -128,6 +130,20 @@ pub fn build(state: AppState) -> Router {
         .route(
             "/admin/users/:id",
             patch(user_handler::update).delete(user_handler::delete),
+        )
+        .route(
+            "/admin/posts",
+            get(post_handler::list_admin).post(post_handler::create),
+        )
+        .route(
+            "/admin/posts/:id",
+            get(post_handler::get_admin)
+                .put(post_handler::update)
+                .delete(post_handler::delete),
+        )
+        .route(
+            "/admin/posts/:id/revisions",
+            get(post_handler::list_revisions),
         )
         .route_layer(middleware::from_fn_with_state(state.clone(), jwt_guard));
 

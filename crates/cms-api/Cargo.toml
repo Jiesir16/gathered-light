@@ -64,6 +64,10 @@ aws-sdk-s3.workspace           = true
 # ── image processing ─────────────────────────────────────────
 image.workspace = true
 
+# ── content (rich text 渲染/清洗) ─────────────────────────────
+ammonia.workspace = true
+slug.workspace    = true
+
 # ── misc ────────────────────────────────────────────────────
 chrono.workspace = true
 uuid.workspace   = true

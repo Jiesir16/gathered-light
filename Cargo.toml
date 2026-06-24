@@ -79,6 +79,10 @@ aws-sdk-s3 = "1"
 # ── image processing ───────────────────────────────────────────────────
 image = { version = "0.25", features = ["jpeg", "png", "webp"] }
 
+# ── content (rich text 渲染/清洗) ───────────────────────────────────────
+ammonia = "4"            # HTML 白名单清洗（XSS 防护），TipTap 正文落库前必过
+slug    = "0.1"          # slug 规范化
+
 # ── integration tests ──────────────────────────────────────────────────
 # 不再使用 testcontainers——它会启独立 PG/Redis 容器，进程异常退出留孤儿。
 # 测试改为复用 dev compose 已起的 gathered-pg/gathered-redis：

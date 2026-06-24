@@ -5,6 +5,8 @@
 
 pub mod error;
 pub mod photo;
+pub mod post;
 
 pub use error::DomainError;
 pub use photo::{Locale, Privacy};
+pub use post::{PostStatus, PostType};
