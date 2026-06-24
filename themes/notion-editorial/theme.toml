@@ -1,0 +1,27 @@
+[theme]
+slug    = "notion-editorial"
+name    = "Notion Editorial"
+version = "1.0.0"
+author  = "gathered-light"
+mode    = "light"                       # light | dark | auto
+source  = "awesome-design-md/notion"
+license = "MIT"
+summary = "暖中性、编辑感、whisper 边框与多层柔和阴影；贴合「拾光集」的慢节奏影像手记气质。"
+
+[supports]
+gallery     = true
+article     = true
+dark_toggle = false
+
+# Tier-2 用：每种路由用哪个模板组件（Tier-1 可忽略）
+[templates]
+home   = "default"
+list   = "masonry"
+single = "editorial"
+photo  = "lightbox"
+
+# Tier-1 布局开关
+[layout]
+gallery_columns = 3
+density         = "comfortable"         # compact | comfortable | spacious
+hero            = "editorial"           # editorial | minimal | cover

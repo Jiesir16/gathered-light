@@ -1,0 +1,25 @@
+[theme]
+slug    = "sanity-noir"
+name    = "Sanity Noir"
+version = "1.0.0"
+author  = "gathered-light"
+mode    = "dark"                        # light | dark | auto
+source  = "awesome-design-md/sanity"
+license = "MIT"
+summary = "近黑画布（#0b0b0b）+ 纯中性灰阶 + 霓虹点缀，精密工程感；适合摄影暗房式展陈。"
+
+[supports]
+gallery     = true
+article     = true
+dark_toggle = false
+
+[templates]
+home   = "default"
+list   = "grid"
+single = "editorial"
+photo  = "lightbox"
+
+[layout]
+gallery_columns = 3
+density         = "comfortable"
+hero            = "minimal"

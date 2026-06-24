@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "gathered-light theme tokens",
+  "description": "语义设计令牌契约。所有主题必须产出同一组角色令牌；前端组件只依赖角色，与具体主题解耦。点路径转连字符 + --gl- 前缀即为 CSS 变量名。",
+  "type": "object",
+  "required": ["meta", "color", "font", "type", "radius", "space"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "meta": {
+      "type": "object",
+      "required": ["name", "mode"],
+      "properties": {
+        "name": { "type": "string" },
+        "mode": { "enum": ["light", "dark", "auto"] },
+        "source": { "type": "string", "description": "来源，如 awesome-design-md/notion" }
+      }
+    },
+    "color": {
+      "type": "object",
+      "description": "颜色角色。值须为合法 hex / rgb / rgba（导入时校验，禁止任意字符串以防 CSS 注入）。",
+      "required": ["bg", "surface", "text", "accent", "on-accent"],
+      "properties": {
+        "bg":          { "type": "string", "description": "页面主背景" },
+        "bg-alt":      { "type": "string", "description": "交替/分区背景" },
+        "surface":     { "type": "string", "description": "卡片/容器表面" },
+        "border":      { "type": "string", "description": "分隔线/边框" },
+        "text":        { "type": "string", "description": "主文本" },
+        "text-muted":  { "type": "string", "description": "次要文本" },
+        "text-subtle": { "type": "string", "description": "占位/弱化文本" },
+        "accent":      { "type": "string", "description": "主操作色（CTA/链接）" },
+        "accent-hover":{ "type": "string", "description": "主操作色 hover/active" },
+        "on-accent":   { "type": "string", "description": "accent 之上的文字色" },
+        "success":     { "type": "string" },
+        "warning":     { "type": "string" },
+        "danger":      { "type": "string" }
+      }
+    },
+    "font": {
+      "type": "object",
+      "required": ["display", "body"],
+      "properties": {
+        "display": { "type": "string", "description": "标题字族（含 fallback）" },
+        "body":    { "type": "string", "description": "正文字族" },
+        "mono":    { "type": "string", "description": "代码/技术字族" }
+      }
+    },
+    "type": {
+      "type": "object",
+      "description": "排版刻度。尺寸须匹配 ^\\d+(px|rem)$；tracking 形如 -2.125px。",
+      "additionalProperties": { "type": ["string", "number"] }
+    },
+    "radius": {
+      "type": "object",
+      "properties": {
+        "input": { "type": "string" },
+        "card":  { "type": "string" },
+        "pill":  { "type": "string" }
+      }
+    },
+    "space": {
+      "type": "object",
+      "properties": {
+        "unit":      { "type": "string" },
+        "section-y": { "type": "string" },
+        "gutter":    { "type": "string" },
+        "max-width": { "type": "string" }
+      }
+    },
+    "shadow": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}
